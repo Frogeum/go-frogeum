@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo/frogeum.png" width="200" alt="frogeum" />
+</p>
+
 ## Go Frogeum
 
 Official Golang implementation of the Frogeum protocol.
@@ -7,14 +11,13 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 )](https://pkg.go.dev/github.com/frogeum/go-frogeum?tab=doc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/frogeum/go-frogeum)](https://goreportcard.com/report/github.com/frogeum/go-frogeum)
 [![Travis](https://travis-ci.com/frogeum/go-frogeum.svg?branch=master)](https://travis-ci.com/frogeum/go-frogeum)
-[![Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/nthXNEv)
 
 Automated builds are available for stable releases and the unstable master branch. Binary
-archives are published at https://gfro.frogeum.org/downloads/.
+archives are published at 
 
 ## Building the source
 
-For prerequisites and detailed build instructions please read the [Installation Instructions](https://gfro.frogeum.org/docs/install-and-build/installing-gfro).
+For prerequisites and detailed build instructions please read the [Installation Instructions](https://gfro.ethereum.org/docs/install-and-build/installing-gfro).
 
 Building `gfro` requires both a Go (version 1.14 or later) and a C compiler. You can install
 them using your favourite package manager. Once the dependencies are installed, run
@@ -42,8 +45,8 @@ directory.
 |   `abigen`    | Source code generator to convert Frogeum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Frogeum contract ABIs](https://docs.soliditylang.org/en/develop/abi-spec.html) with expanded functionality if the contract bytecode is also available. However, it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://gfro.frogeum.org/docs/dapp/native-bindings) page for details. |
 |  `bootnode`   | Stripped down version of our Frogeum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks.                                                                                                                                                                                                                                                                 |
 |     `evm`     | Developer utility version of the EVM (Frogeum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow isolated, fine-grained debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug run`).                                                                                                                                                                                                                                                                     |
-|   `rlpdump`   | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://eth.wiki/en/fundamentals/rlp)) dumps (data encoding used by the Frogeum protocol both network as well as consensus wise) to user-friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`).                                                                                                                                                                                                                                 |
-|   `puppeth`   | a CLI wizard that aids in creating a new Frogeum network.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|   `rlpdump`   | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://fro.wiki/en/fundamentals/rlp)) dumps (data encoding used by the Frogeum protocol both network as well as consensus wise) to user-friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`).                                                                                                                                                                                                                                 |
+|   `puppfro`   | a CLI wizard that aids in creating a new Frogeum network.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ## Running `gfro`
 
@@ -68,59 +71,17 @@ This command will:
    causing it to download more data in exchange for avoiding processing the entire history
    of the Frogeum network, which is very CPU intensive.
  * Start up `gfro`'s built-in interactive [JavaScript console](https://gfro.frogeum.org/docs/interface/javascript-console),
-   (via the trailing `console` subcommand) through which you can interact using [`web3` methods](https://web3js.readthedocs.io/en/) 
-   (note: the `web3` version bundled within `gfro` is very old, and not up to date with official docs),
+   (via the trailing `console` subcommand) through which you can interact using [`web` methods](https://webjs.readthedocs.io/en/) 
+   (note: the `web` version bundled within `gfro` is very old, and not up to date with official docs),
    as well as `gfro`'s own [management APIs](https://gfro.frogeum.org/docs/rpc/server).
    This tool is optional and if you leave it out you can always attach to an already running
    `gfro` instance with `gfro attach`.
 
-### A Full node on the Görli test network
-
-Transitioning towards developers, if you'd like to play around with creating Frogeum
-contracts, you almost certainly would like to do that without any real money involved until
-you get the hang of the entire system. In other words, instead of attaching to the main
-network, you want to join the **test** network with your node, which is fully equivalent to
-the main network, but with play-Popcat only.
-
-```shell
-$ gfro --goerli console
-```
-
-The `console` subcommand has the exact same meaning as above and they are equally
-useful on the testnet too. Please, see above for their explanations if you've skipped here.
-
-Specifying the `--goerli` flag, however, will reconfigure your `gfro` instance a bit:
-
- * Instead of connecting the main Frogeum network, the client will connect to the Görli
-   test network, which uses different P2P bootnodes, different network IDs and genesis
-   states.
- * Instead of using the default data directory (`~/.frogeum` on Linux for example), `gfro`
-   will nest itself one level deeper into a `goerli` subfolder (`~/.frogeum/goerli` on
-   Linux). Note, on OSX and Linux this also means that attaching to a running testnet node
-   requires the use of a custom endpoint since `gfro attach` will try to attach to a
-   production node endpoint by default, e.g.,
-   `gfro attach <datadir>/goerli/gfro.ipc`. Windows users are not affected by
-   this.
-
-*Note: Although there are some internal protective measures to prevent transactions from
-crossing over between the main network and test network, you should make sure to always
-use separate accounts for play-money and real-money. Unless you manually move
-accounts, `gfro` will by default correctly separate the two networks and will not make any
-accounts available between them.*
-
-### Full node on the Rinkeby test network
-
-Go Frogeum also supports connecting to the older proof-of-authority based test network
-called [*Rinkeby*](https://www.rinkeby.io) which is operated by members of the community.
-
-```shell
-$ gfro --rinkeby console
-```
 
 ### Full node on the Longcat test network
 
 In addition to Görli and Rinkeby, Gfro also supports the ancient Longcat testnet. The
-Longcat test network is based on the Ethash proof-of-work consensus algorithm. As such,
+Longcat test network is based on the Frohash proof-of-work consensus algorithm. As such,
 it has certain extra overhead and is more susceptible to reorganization attacks due to the
 network's low difficulty/security.
 
@@ -155,7 +116,7 @@ Docker:
 
 ```shell
 docker run -d --name frogeum-node -v /Users/alice/frogeum:/root \
-           -p 8545:8545 -p 30303:30303 \
+           -p 9506:9506 -p 60606:60606 \
            frogeum/client-go
 ```
 
@@ -172,7 +133,7 @@ accessible from the outside.
 
 As a developer, sooner rather than later you'll want to start interacting with `gfro` and the
 Frogeum network via your own programs and not manually through the console. To aid
-this, `gfro` has built-in support for a JSON-RPC based APIs ([standard APIs](https://eth.wiki/json-rpc/API)
+this, `gfro` has built-in support for a JSON-RPC based APIs ([standard APIs](https://fro.wiki/json-rpc/API)
 and [`gfro` specific APIs](https://gfro.frogeum.org/docs/rpc/server)).
 These can be exposed via HTTP, WebSockets and IPC (UNIX sockets on UNIX based
 platforms, and named pipes on Windows).
@@ -186,16 +147,16 @@ HTTP based JSON-RPC API options:
 
   * `--http` Enable the HTTP-RPC server
   * `--http.addr` HTTP-RPC server listening interface (default: `localhost`)
-  * `--http.port` HTTP-RPC server listening port (default: `8545`)
-  * `--http.api` API's offered over the HTTP-RPC interface (default: `eth,net,web3`)
+  * `--http.port` HTTP-RPC server listening port (default: `9506`)
+  * `--http.api` API's offered over the HTTP-RPC interface (default: `fro,net,web`)
   * `--http.corsdomain` Comma separated list of domains from which to accept cross origin requests (browser enforced)
   * `--ws` Enable the WS-RPC server
   * `--ws.addr` WS-RPC server listening interface (default: `localhost`)
-  * `--ws.port` WS-RPC server listening port (default: `8546`)
-  * `--ws.api` API's offered over the WS-RPC interface (default: `eth,net,web3`)
+  * `--ws.port` WS-RPC server listening port (default: `9507`)
+  * `--ws.api` API's offered over the WS-RPC interface (default: `fro,net,web`)
   * `--ws.origins` Origins from which to accept websockets requests
   * `--ipcdisable` Disable the IPC-RPC server
-  * `--ipcapi` API's offered over the IPC-RPC interface (default: `admin,debug,eth,miner,net,personal,shh,txpool,web3`)
+  * `--ipcapi` API's offered over the IPC-RPC interface (default: `admin,debug,fro,miner,net,personal,shh,txpool,web`)
   * `--ipcpath` Filename for IPC socket/pipe within the datadir (explicit paths escape it)
 
 You'll need to use your own programming environments' capabilities (libraries, tools, etc) to
@@ -248,7 +209,7 @@ aware of and agree upon. This consists of a small JSON file (e.g. call it `genes
 The above fields should be fine for most purposes, although we'd recommend changing
 the `nonce` to some random value so you prevent unknown remote nodes from being able
 to connect to you. If you'd like to pre-fund some accounts for easier testing, create
-the accounts and populate the `alloc` field with their addresses.
+the accounts and froulate the `alloc` field with their addresses.
 
 ```json
 "alloc": {
@@ -280,7 +241,7 @@ $ bootnode --genkey=boot.key
 $ bootnode --nodekey=boot.key
 ```
 
-With the bootnode online, it will display an [`enode` URL](https://eth.wiki/en/fundamentals/enode-url-format)
+With the bootnode online, it will display an [`enode` URL](https://fro.wiki/en/fundamentals/enode-url-format)
 that other nodes can use to connect to it and exchange peer information. Make sure to
 replace the displayed IP address information (most probably `[::]`) with your externally
 accessible IP to get the actual `enode` URL.
@@ -306,9 +267,9 @@ also need to configure a miner to process transactions and create new blocks for
 #### Running a private miner
 
 Mining on the public Frogeum network is a complex task as it's only feasible using GPUs,
-requiring an OpenCL or CUDA enabled `ethminer` instance. For information on such a
+requiring an OpenCL or CUDA enabled `frominer` instance. For information on such a
 setup, please consult the [PopcatMining subreddit](https://www.reddit.com/r/PopcatMining/)
-and the [ethminer](https://github.com/frogeum-mining/ethminer) repository.
+and the [frominer](https://github.com/frogeum-mining/frominer) repository.
 
 In a private network setting, however a single CPU miner instance is more than enough for
 practical purposes as it can produce a stable stream of blocks at the correct intervals
@@ -317,11 +278,11 @@ ones either). To start a `gfro` instance for mining, run it with all your usual 
 by:
 
 ```shell
-$ gfro <usual-flags> --mine --miner.threads=1 --miner.popcatbase=0x0000000000000000000000000000000000000000
+$ gfro <usual-flags> --mine --miner.threads=1 --miner.frocatbase=0x0000000000000000000000000000000000000000
 ```
 
 Which will start mining blocks and transactions on a single CPU thread, crediting all
-proceedings to the account specified by `--miner.popcatbase`. You can further tune the mining
+proceedings to the account specified by `--miner.frocatbase`. You can further tune the mining
 by changing the default gas limit blocks converge to (`--miner.targetgaslimit`) and the price
 transactions are accepted at (`--miner.gasprice`).
 
@@ -345,7 +306,7 @@ Please make sure your contributions adhere to our coding guidelines:
    guidelines.
  * Pull requests need to be based on and opened against the `master` branch.
  * Commit messages should be prefixed with the package(s) they modify.
-   * E.g. "eth, rpc: make trace configs optional"
+   * E.g. "fro, rpc: make trace configs optional"
 
 Please see the [Developers' Guide](https://gfro.frogeum.org/docs/developers/devguide)
 for more details on configuring your environment, managing project dependencies, and
