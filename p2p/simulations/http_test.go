@@ -1,18 +1,18 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2017 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package simulations
 
@@ -29,13 +29,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/frogeum/go-frogeum/event"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/node"
+	"github.com/frogeum/go-frogeum/p2p"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/p2p/simulations/adapters"
+	"github.com/frogeum/go-frogeum/rpc"
 	"github.com/mattn/go-colorable"
 )
 
@@ -141,7 +141,7 @@ func (t *testService) Stop() error {
 // message with the given code
 func (t *testService) handshake(rw p2p.MsgReadWriter, code uint64) error {
 	errc := make(chan error, 2)
-	go func() { errc <- p2p.SendItems(rw, code) }()
+	go func() { errc <- p2p.Send(rw, code, struct{}{}) }()
 	go func() { errc <- p2p.ExpectMsg(rw, code, struct{}{}) }()
 	for i := 0; i < 2; i++ {
 		if err := <-errc; err != nil {

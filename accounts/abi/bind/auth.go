@@ -1,36 +1,35 @@
-// Copyright 2016 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2016 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package bind
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"errors"
 	"io"
 	"io/ioutil"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/external"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/frogeum/go-frogeum/accounts"
+	"github.com/frogeum/go-frogeum/accounts/external"
+	"github.com/frogeum/go-frogeum/accounts/keystore"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/log"
 )
 
 // ErrNoChainID is returned whenever the user failed to specify a chain id.
@@ -75,7 +74,6 @@ func NewKeyStoreTransactor(keystore *keystore.KeyStore, account accounts.Account
 			}
 			return tx.WithSignature(signer, signature)
 		},
-		Context: context.Background(),
 	}, nil
 }
 
@@ -99,7 +97,6 @@ func NewKeyedTransactor(key *ecdsa.PrivateKey) *TransactOpts {
 			}
 			return tx.WithSignature(signer, signature)
 		},
-		Context: context.Background(),
 	}
 }
 
@@ -136,7 +133,6 @@ func NewKeyStoreTransactorWithChainID(keystore *keystore.KeyStore, account accou
 			}
 			return tx.WithSignature(signer, signature)
 		},
-		Context: context.Background(),
 	}, nil
 }
 
@@ -160,7 +156,6 @@ func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*Tr
 			}
 			return tx.WithSignature(signer, signature)
 		},
-		Context: context.Background(),
 	}, nil
 }
 
@@ -175,6 +170,5 @@ func NewClefTransactor(clef *external.ExternalSigner, account accounts.Account) 
 			}
 			return clef.SignTx(account, transaction, nil) // Clef enforces its own chain id
 		},
-		Context: context.Background(),
 	}
 }

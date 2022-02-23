@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package types
 
@@ -23,63 +23,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
-)
-
-var (
-	legacyReceipt = &Receipt{
-		Status:            ReceiptStatusFailed,
-		CumulativeGasUsed: 1,
-		Logs: []*Log{
-			{
-				Address: common.BytesToAddress([]byte{0x11}),
-				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
-				Data:    []byte{0x01, 0x00, 0xff},
-			},
-			{
-				Address: common.BytesToAddress([]byte{0x01, 0x11}),
-				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
-				Data:    []byte{0x01, 0x00, 0xff},
-			},
-		},
-	}
-	accessListReceipt = &Receipt{
-		Status:            ReceiptStatusFailed,
-		CumulativeGasUsed: 1,
-		Logs: []*Log{
-			{
-				Address: common.BytesToAddress([]byte{0x11}),
-				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
-				Data:    []byte{0x01, 0x00, 0xff},
-			},
-			{
-				Address: common.BytesToAddress([]byte{0x01, 0x11}),
-				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
-				Data:    []byte{0x01, 0x00, 0xff},
-			},
-		},
-		Type: AccessListTxType,
-	}
-	eip1559Receipt = &Receipt{
-		Status:            ReceiptStatusFailed,
-		CumulativeGasUsed: 1,
-		Logs: []*Log{
-			{
-				Address: common.BytesToAddress([]byte{0x11}),
-				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
-				Data:    []byte{0x01, 0x00, 0xff},
-			},
-			{
-				Address: common.BytesToAddress([]byte{0x01, 0x11}),
-				Topics:  []common.Hash{common.HexToHash("dead"), common.HexToHash("beef")},
-				Data:    []byte{0x01, 0x00, 0xff},
-			},
-		},
-		Type: DynamicFeeTxType,
-	}
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/params"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 func TestDecodeEmptyTypedReceipt(t *testing.T) {
@@ -326,6 +273,9 @@ func TestDeriveFields(t *testing.T) {
 			if receipts[i].Logs[j].TxHash != txs[i].Hash() {
 				t.Errorf("receipts[%d].Logs[%d].TxHash = %s, want %s", i, j, receipts[i].Logs[j].TxHash.String(), txs[i].Hash().String())
 			}
+			if receipts[i].Logs[j].TxHash != txs[i].Hash() {
+				t.Errorf("receipts[%d].Logs[%d].TxHash = %s, want %s", i, j, receipts[i].Logs[j].TxHash.String(), txs[i].Hash().String())
+			}
 			if receipts[i].Logs[j].TxIndex != uint(i) {
 				t.Errorf("receipts[%d].Logs[%d].TransactionIndex = %d, want %d", i, j, receipts[i].Logs[j].TxIndex, i)
 			}
@@ -362,105 +312,6 @@ func TestTypedReceiptEncodingDecoding(t *testing.T) {
 			t.Fatal(err)
 		}
 		check(bundle)
-	}
-}
-
-func TestReceiptMarshalBinary(t *testing.T) {
-	// Legacy Receipt
-	legacyReceipt.Bloom = CreateBloom(Receipts{legacyReceipt})
-	have, err := legacyReceipt.MarshalBinary()
-	if err != nil {
-		t.Fatalf("marshal binary error: %v", err)
-	}
-	legacyReceipts := Receipts{legacyReceipt}
-	buf := new(bytes.Buffer)
-	legacyReceipts.EncodeIndex(0, buf)
-	haveEncodeIndex := buf.Bytes()
-	if !bytes.Equal(have, haveEncodeIndex) {
-		t.Errorf("BinaryMarshal and EncodeIndex mismatch, got %x want %x", have, haveEncodeIndex)
-	}
-	buf.Reset()
-	if err := legacyReceipt.EncodeRLP(buf); err != nil {
-		t.Fatalf("encode rlp error: %v", err)
-	}
-	haveRLPEncode := buf.Bytes()
-	if !bytes.Equal(have, haveRLPEncode) {
-		t.Errorf("BinaryMarshal and EncodeRLP mismatch for legacy tx, got %x want %x", have, haveRLPEncode)
-	}
-	legacyWant := common.FromHex("f901c58001b9010000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000010000080000000000000000000004000000000000000000000000000040000000000000000000000000000800000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000f8bef85d940000000000000000000000000000000000000011f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100fff85d940000000000000000000000000000000000000111f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100ff")
-	if !bytes.Equal(have, legacyWant) {
-		t.Errorf("encoded RLP mismatch, got %x want %x", have, legacyWant)
-	}
-
-	// 2930 Receipt
-	buf.Reset()
-	accessListReceipt.Bloom = CreateBloom(Receipts{accessListReceipt})
-	have, err = accessListReceipt.MarshalBinary()
-	if err != nil {
-		t.Fatalf("marshal binary error: %v", err)
-	}
-	accessListReceipts := Receipts{accessListReceipt}
-	accessListReceipts.EncodeIndex(0, buf)
-	haveEncodeIndex = buf.Bytes()
-	if !bytes.Equal(have, haveEncodeIndex) {
-		t.Errorf("BinaryMarshal and EncodeIndex mismatch, got %x want %x", have, haveEncodeIndex)
-	}
-	accessListWant := common.FromHex("01f901c58001b9010000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000010000080000000000000000000004000000000000000000000000000040000000000000000000000000000800000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000f8bef85d940000000000000000000000000000000000000011f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100fff85d940000000000000000000000000000000000000111f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100ff")
-	if !bytes.Equal(have, accessListWant) {
-		t.Errorf("encoded RLP mismatch, got %x want %x", have, accessListWant)
-	}
-
-	// 1559 Receipt
-	buf.Reset()
-	eip1559Receipt.Bloom = CreateBloom(Receipts{eip1559Receipt})
-	have, err = eip1559Receipt.MarshalBinary()
-	if err != nil {
-		t.Fatalf("marshal binary error: %v", err)
-	}
-	eip1559Receipts := Receipts{eip1559Receipt}
-	eip1559Receipts.EncodeIndex(0, buf)
-	haveEncodeIndex = buf.Bytes()
-	if !bytes.Equal(have, haveEncodeIndex) {
-		t.Errorf("BinaryMarshal and EncodeIndex mismatch, got %x want %x", have, haveEncodeIndex)
-	}
-	eip1559Want := common.FromHex("02f901c58001b9010000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000010000080000000000000000000004000000000000000000000000000040000000000000000000000000000800000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000f8bef85d940000000000000000000000000000000000000011f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100fff85d940000000000000000000000000000000000000111f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100ff")
-	if !bytes.Equal(have, eip1559Want) {
-		t.Errorf("encoded RLP mismatch, got %x want %x", have, eip1559Want)
-	}
-}
-
-func TestReceiptUnmarshalBinary(t *testing.T) {
-	// Legacy Receipt
-	legacyBinary := common.FromHex("f901c58001b9010000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000010000080000000000000000000004000000000000000000000000000040000000000000000000000000000800000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000f8bef85d940000000000000000000000000000000000000011f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100fff85d940000000000000000000000000000000000000111f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100ff")
-	gotLegacyReceipt := new(Receipt)
-	if err := gotLegacyReceipt.UnmarshalBinary(legacyBinary); err != nil {
-		t.Fatalf("unmarshal binary error: %v", err)
-	}
-	legacyReceipt.Bloom = CreateBloom(Receipts{legacyReceipt})
-	if !reflect.DeepEqual(gotLegacyReceipt, legacyReceipt) {
-		t.Errorf("receipt unmarshalled from binary mismatch, got %v want %v", gotLegacyReceipt, legacyReceipt)
-	}
-
-	// 2930 Receipt
-	accessListBinary := common.FromHex("01f901c58001b9010000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000010000080000000000000000000004000000000000000000000000000040000000000000000000000000000800000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000f8bef85d940000000000000000000000000000000000000011f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100fff85d940000000000000000000000000000000000000111f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100ff")
-	gotAccessListReceipt := new(Receipt)
-	if err := gotAccessListReceipt.UnmarshalBinary(accessListBinary); err != nil {
-		t.Fatalf("unmarshal binary error: %v", err)
-	}
-	accessListReceipt.Bloom = CreateBloom(Receipts{accessListReceipt})
-	if !reflect.DeepEqual(gotAccessListReceipt, accessListReceipt) {
-		t.Errorf("receipt unmarshalled from binary mismatch, got %v want %v", gotAccessListReceipt, accessListReceipt)
-	}
-
-	// 1559 Receipt
-	eip1559RctBinary := common.FromHex("02f901c58001b9010000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000010000080000000000000000000004000000000000000000000000000040000000000000000000000000000800000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000f8bef85d940000000000000000000000000000000000000011f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100fff85d940000000000000000000000000000000000000111f842a0000000000000000000000000000000000000000000000000000000000000deada0000000000000000000000000000000000000000000000000000000000000beef830100ff")
-	got1559Receipt := new(Receipt)
-	if err := got1559Receipt.UnmarshalBinary(eip1559RctBinary); err != nil {
-		t.Fatalf("unmarshal binary error: %v", err)
-	}
-	eip1559Receipt.Bloom = CreateBloom(Receipts{eip1559Receipt})
-	if !reflect.DeepEqual(got1559Receipt, eip1559Receipt) {
-		t.Errorf("receipt unmarshalled from binary mismatch, got %v want %v", got1559Receipt, eip1559Receipt)
 	}
 }
 

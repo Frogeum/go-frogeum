@@ -1,18 +1,18 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package trie
 
@@ -21,11 +21,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/ethdb/memorydb"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 // Prove constructs a merkle proof for key. The result contains all encoded nodes
@@ -406,7 +406,7 @@ func unset(parent node, child node, key []byte, pos int, removeLeft bool) error 
 }
 
 // hasRightElement returns the indicator whether there exists more elements
-// on the right side of the given path. The given path can point to an existent
+// in the right side of the given path. The given path can point to an existent
 // key or a non-existent one. This function has the assumption that the whole
 // path should already be resolved.
 func hasRightElement(node node, key []byte) bool {
@@ -472,15 +472,10 @@ func VerifyRangeProof(rootHash common.Hash, firstKey []byte, lastKey []byte, key
 	if len(keys) != len(values) {
 		return false, fmt.Errorf("inconsistent proof data, keys: %d, values: %d", len(keys), len(values))
 	}
-	// Ensure the received batch is monotonic increasing and contains no deletions
+	// Ensure the received batch is monotonic increasing.
 	for i := 0; i < len(keys)-1; i++ {
 		if bytes.Compare(keys[i], keys[i+1]) >= 0 {
 			return false, errors.New("range is not monotonically increasing")
-		}
-	}
-	for _, value := range values {
-		if len(value) == 0 {
-			return false, errors.New("range contains deletion")
 		}
 	}
 	// Special case, there is no edge proof at all. The given range is expected
@@ -505,7 +500,7 @@ func VerifyRangeProof(rootHash common.Hash, firstKey []byte, lastKey []byte, key
 		if val != nil || hasRightElement(root, firstKey) {
 			return false, errors.New("more entries available")
 		}
-		return false, nil
+		return hasRightElement(root, firstKey), nil
 	}
 	// Special case, there is only one element and two edge keys are same.
 	// In this case, we can't construct two edge paths. So handle it here.
@@ -563,7 +558,7 @@ func VerifyRangeProof(rootHash common.Hash, firstKey []byte, lastKey []byte, key
 	if tr.Hash() != rootHash {
 		return false, fmt.Errorf("invalid proof, want hash %x, got %x", rootHash, tr.Hash())
 	}
-	return hasRightElement(tr.root, keys[len(keys)-1]), nil
+	return hasRightElement(root, keys[len(keys)-1]), nil
 }
 
 // get returns the child of the given node. Return nil if the

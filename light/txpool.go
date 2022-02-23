@@ -1,18 +1,18 @@
-// Copyright 2016 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2016 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package light
 
@@ -23,15 +23,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/core/state"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/event"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/params"
 )
 
 const (
@@ -503,25 +503,6 @@ func (pool *TxPool) Content() (map[common.Address]types.Transactions, map[common
 	// There are no queued transactions in a light pool, just return an empty map
 	queued := make(map[common.Address]types.Transactions)
 	return pending, queued
-}
-
-// ContentFrom retrieves the data content of the transaction pool, returning the
-// pending as well as queued transactions of this address, grouped by nonce.
-func (pool *TxPool) ContentFrom(addr common.Address) (types.Transactions, types.Transactions) {
-	pool.mu.RLock()
-	defer pool.mu.RUnlock()
-
-	// Retrieve the pending transactions and sort by nonce
-	var pending types.Transactions
-	for _, tx := range pool.pending {
-		account, _ := types.Sender(pool.signer, tx)
-		if account != addr {
-			continue
-		}
-		pending = append(pending, tx)
-	}
-	// There are no queued transactions in a light pool, just return an empty map
-	return pending, types.Transactions{}
 }
 
 // RemoveTransactions removes all given transactions from the pool.

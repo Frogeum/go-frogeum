@@ -1,18 +1,18 @@
-// Copyright 2014 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2014 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package p2p
 
@@ -25,13 +25,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/enr"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common/mclock"
+	"github.com/frogeum/go-frogeum/event"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/metrics"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/p2p/enr"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 var (
@@ -115,35 +115,17 @@ type Peer struct {
 	disc     chan DiscReason
 
 	// events receives message send / receive events if set
-	events   *event.Feed
-	testPipe *MsgPipeRW // for testing
+	events *event.Feed
 }
 
 // NewPeer returns a peer for testing purposes.
 func NewPeer(id enode.ID, name string, caps []Cap) *Peer {
-	// Generate a fake set of local protocols to match as running caps. Almost
-	// no fields needs to be meaningful here as we're only using it to cross-
-	// check with the "remote" caps array.
-	protos := make([]Protocol, len(caps))
-	for i, cap := range caps {
-		protos[i].Name = cap.Name
-		protos[i].Version = cap.Version
-	}
 	pipe, _ := net.Pipe()
 	node := enode.SignNull(new(enr.Record), id)
 	conn := &conn{fd: pipe, transport: nil, node: node, caps: caps, name: name}
-	peer := newPeer(log.Root(), conn, protos)
+	peer := newPeer(log.Root(), conn, nil)
 	close(peer.closed) // ensures Disconnect doesn't block
 	return peer
-}
-
-// NewPeerPipe creates a peer for testing purposes.
-// The message pipe given as the last parameter is closed when
-// Disconnect is called on the peer.
-func NewPeerPipe(id enode.ID, name string, caps []Cap, pipe *MsgPipeRW) *Peer {
-	p := NewPeer(id, name, caps)
-	p.testPipe = pipe
-	return p
 }
 
 // ID returns the node's public key.
@@ -203,10 +185,6 @@ func (p *Peer) LocalAddr() net.Addr {
 // Disconnect terminates the peer connection with the given reason.
 // It returns immediately and does not wait until the connection is closed.
 func (p *Peer) Disconnect(reason DiscReason) {
-	if p.testPipe != nil {
-		p.testPipe.Close()
-	}
-
 	select {
 	case p.disc <- reason:
 	case <-p.closed:
@@ -482,7 +460,7 @@ func (rw *protoRW) ReadMsg() (Msg, error) {
 // peer. Sub-protocol independent fields are contained and initialized here, with
 // protocol specifics delegated to all connected sub-protocols.
 type PeerInfo struct {
-	ENR     string   `json:"enr,omitempty"` // Ethereum Node Record
+	ENR     string   `json:"enr,omitempty"` // Frogeum Node Record
 	Enode   string   `json:"enode"`         // Node URL
 	ID      string   `json:"id"`            // Unique node identifier
 	Name    string   `json:"name"`          // Name of the node, including client type, version, OS, custom data

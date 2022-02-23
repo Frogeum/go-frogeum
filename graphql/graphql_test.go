@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package graphql
 
@@ -25,16 +25,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/eth/ethconfig"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/consensus/ethash"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/core/vm"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/eth"
+	"github.com/frogeum/go-frogeum/eth/ethconfig"
+	"github.com/frogeum/go-frogeum/node"
+	"github.com/frogeum/go-frogeum/params"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -48,7 +48,6 @@ func TestBuildSchema(t *testing.T) {
 	conf := node.DefaultConfig
 	conf.DataDir = ddir
 	stack, err := node.New(&conf)
-	defer stack.Close()
 	if err != nil {
 		t.Fatalf("could not create new node: %v", err)
 	}
@@ -177,7 +176,7 @@ func TestGraphQLBlockSerializationEIP2718(t *testing.T) {
 	}{
 		{
 			body: `{"query": "{block {number transactions { from { address } to { address } value hash type accessList { address storageKeys } index}}}"}`,
-			want: `{"data":{"block":{"number":1,"transactions":[{"from":{"address":"0x71562b71999873db5b286df957af199ec94617f7"},"to":{"address":"0x0000000000000000000000000000000000000dad"},"value":"0x64","hash":"0xd864c9d7d37fade6b70164740540c06dd58bb9c3f6b46101908d6339db6a6a7b","type":0,"accessList":[],"index":0},{"from":{"address":"0x71562b71999873db5b286df957af199ec94617f7"},"to":{"address":"0x0000000000000000000000000000000000000dad"},"value":"0x32","hash":"0x19b35f8187b4e15fb59a9af469dca5dfa3cd363c11d372058c12f6482477b474","type":1,"accessList":[{"address":"0x0000000000000000000000000000000000000dad","storageKeys":["0x0000000000000000000000000000000000000000000000000000000000000000"]}],"index":1}]}}}`,
+			want: `{"data":{"block":{"number":1,"transactions":[{"from":{"address":"0x71562b71999873db5b286df957af199ec94617f7"},"to":{"address":"0x0000000000000000000000000000000000000dad"},"value":"0x64","hash":"0x4f7b8d718145233dcf7f29e34a969c63dd4de8715c054ea2af022b66c4f4633e","type":0,"accessList":[],"index":0},{"from":{"address":"0x71562b71999873db5b286df957af199ec94617f7"},"to":{"address":"0x0000000000000000000000000000000000000dad"},"value":"0x32","hash":"0x9c6c2c045b618fe87add0e49ba3ca00659076ecae00fd51de3ba5d4ccf9dbf40","type":1,"accessList":[{"address":"0x0000000000000000000000000000000000000dad","storageKeys":["0x0000000000000000000000000000000000000000000000000000000000000000"]}],"index":1}]}}}`,
 			code: 200,
 		},
 	} {
@@ -276,7 +275,7 @@ func createGQLServiceWithTransactions(t *testing.T, stack *node.Node) {
 	// create backend
 	key, _ := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	address := crypto.PubkeyToAddress(key.PublicKey)
-	funds := big.NewInt(1000000000000000)
+	funds := big.NewInt(1000000000)
 	dad := common.HexToAddress("0x0000000000000000000000000000000000000dad")
 
 	ethConf := &ethconfig.Config{
@@ -298,7 +297,6 @@ func createGQLServiceWithTransactions(t *testing.T, stack *node.Node) {
 					Balance: big.NewInt(0),
 				},
 			},
-			BaseFee: big.NewInt(params.InitialBaseFee),
 		},
 		Ethash: ethash.Config{
 			PowMode: ethash.ModeFake,
@@ -323,14 +321,14 @@ func createGQLServiceWithTransactions(t *testing.T, stack *node.Node) {
 		To:       &dad,
 		Value:    big.NewInt(100),
 		Gas:      50000,
-		GasPrice: big.NewInt(params.InitialBaseFee),
+		GasPrice: big.NewInt(1),
 	})
 	envelopTx, _ := types.SignNewTx(key, signer, &types.AccessListTx{
 		ChainID:  ethConf.Genesis.Config.ChainID,
 		Nonce:    uint64(1),
 		To:       &dad,
 		Gas:      30000,
-		GasPrice: big.NewInt(params.InitialBaseFee),
+		GasPrice: big.NewInt(1),
 		Value:    big.NewInt(50),
 		AccessList: types.AccessList{{
 			Address:     dad,

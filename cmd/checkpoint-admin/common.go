@@ -1,33 +1,33 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of go-frogeum.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
+// go-frogeum is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// go-frogeum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
 import (
 	"strconv"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/external"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/contracts/checkpointoracle"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/frogeum/go-frogeum/accounts"
+	"github.com/frogeum/go-frogeum/accounts/abi/bind"
+	"github.com/frogeum/go-frogeum/accounts/external"
+	"github.com/frogeum/go-frogeum/cmd/utils"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/contracts/checkpointoracle"
+	"github.com/frogeum/go-frogeum/ethclient"
+	"github.com/frogeum/go-frogeum/params"
+	"github.com/frogeum/go-frogeum/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -35,7 +35,7 @@ import (
 func newClient(ctx *cli.Context) *ethclient.Client {
 	client, err := ethclient.Dial(ctx.GlobalString(nodeURLFlag.Name))
 	if err != nil {
-		utils.Fatalf("Failed to connect to Ethereum node: %v", err)
+		utils.Fatalf("Failed to connect to Frogeum node: %v", err)
 	}
 	return client
 }
@@ -44,7 +44,7 @@ func newClient(ctx *cli.Context) *ethclient.Client {
 func newRPCClient(url string) *rpc.Client {
 	client, err := rpc.Dial(url)
 	if err != nil {
-		utils.Fatalf("Failed to connect to Ethereum node: %v", err)
+		utils.Fatalf("Failed to connect to Frogeum node: %v", err)
 	}
 	return client
 }

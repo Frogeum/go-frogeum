@@ -1,18 +1,18 @@
-// Copyright 2021 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2021 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package eth
 
@@ -21,31 +21,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/state"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/core/vm"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/trie"
 )
 
-// StateAtBlock retrieves the state database associated with a certain block.
+// stateAtBlock retrieves the state database associated with a certain block.
 // If no state is locally available for the given block, a number of blocks
 // are attempted to be reexecuted to generate the desired state. The optional
 // base layer statedb can be passed then it's regarded as the statedb of the
 // parent block.
-// Parameters:
-// - block: The block for which we want the state (== state at the stateRoot of the parent)
-// - reexec: The maximum number of blocks to reprocess trying to obtain the desired state
-// - base: If the caller is tracing multiple blocks, the caller can provide the parent state
-//         continuously from the callsite.
-// - checklive: if true, then the live 'blockchain' state database is used. If the caller want to
-//        perform Commit or other 'save-to-disk' changes, this should be set to false to avoid
-//        storing trash persistently
-// - preferDisk: this arg can be used by the caller to signal that even though the 'base' is provided,
-//        it would be preferrable to start from a fresh state, if we have it on disk.
-func (eth *Ethereum) StateAtBlock(block *types.Block, reexec uint64, base *state.StateDB, checkLive bool, preferDisk bool) (statedb *state.StateDB, err error) {
+func (eth *Frogeum) stateAtBlock(block *types.Block, reexec uint64, base *state.StateDB, checkLive bool) (statedb *state.StateDB, err error) {
 	var (
 		current  *types.Block
 		database state.Database
@@ -60,15 +50,6 @@ func (eth *Ethereum) StateAtBlock(block *types.Block, reexec uint64, base *state
 		}
 	}
 	if base != nil {
-		if preferDisk {
-			// Create an ephemeral trie.Database for isolating the live one. Otherwise
-			// the internal junks created by tracing will be persisted into the disk.
-			database = state.NewDatabaseWithConfig(eth.chainDb, &trie.Config{Cache: 16})
-			if statedb, err = state.New(block.Root(), database, nil); err == nil {
-				log.Info("Found disk backend for state trie", "root", block.Root(), "number", block.Number())
-				return statedb, nil
-			}
-		}
 		// The optional base statedb is given, mark the start point as parent block
 		statedb, database, report = base, base.Database(), false
 		current = eth.blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1)
@@ -138,8 +119,7 @@ func (eth *Ethereum) StateAtBlock(block *types.Block, reexec uint64, base *state
 		// Finalize the state so any modifications are written to the trie
 		root, err := statedb.Commit(eth.blockchain.Config().IsEIP158(current.Number()))
 		if err != nil {
-			return nil, fmt.Errorf("stateAtBlock commit failed, number %d root %v: %w",
-				current.NumberU64(), current.Root().Hex(), err)
+			return nil, err
 		}
 		statedb, err = state.New(root, database, nil)
 		if err != nil {
@@ -159,7 +139,7 @@ func (eth *Ethereum) StateAtBlock(block *types.Block, reexec uint64, base *state
 }
 
 // stateAtTransaction returns the execution environment of a certain transaction.
-func (eth *Ethereum) stateAtTransaction(block *types.Block, txIndex int, reexec uint64) (core.Message, vm.BlockContext, *state.StateDB, error) {
+func (eth *Frogeum) stateAtTransaction(block *types.Block, txIndex int, reexec uint64) (core.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis block.
 	if block.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
@@ -171,7 +151,7 @@ func (eth *Ethereum) stateAtTransaction(block *types.Block, txIndex int, reexec 
 	}
 	// Lookup the statedb of parent block from the live database,
 	// otherwise regenerate it on the flight.
-	statedb, err := eth.StateAtBlock(parent, reexec, nil, true, false)
+	statedb, err := eth.stateAtBlock(parent, reexec, nil, true)
 	if err != nil {
 		return nil, vm.BlockContext{}, nil, err
 	}
@@ -182,7 +162,7 @@ func (eth *Ethereum) stateAtTransaction(block *types.Block, txIndex int, reexec 
 	signer := types.MakeSigner(eth.blockchain.Config(), block.Number())
 	for idx, tx := range block.Transactions() {
 		// Assemble the transaction call message and return if the requested offset
-		msg, _ := tx.AsMessage(signer, block.BaseFee())
+		msg, _ := tx.AsMessage(signer)
 		txContext := core.NewEVMTxContext(msg)
 		context := core.NewEVMBlockContext(block.Header(), eth.blockchain, nil)
 		if idx == txIndex {
@@ -190,7 +170,7 @@ func (eth *Ethereum) stateAtTransaction(block *types.Block, txIndex int, reexec 
 		}
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(context, txContext, statedb, eth.blockchain.Config(), vm.Config{})
-		statedb.Prepare(tx.Hash(), idx)
+		statedb.Prepare(tx.Hash(), block.Hash(), idx)
 		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
 		}

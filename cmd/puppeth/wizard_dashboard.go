@@ -1,25 +1,25 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2017 The go-frogeum Authors
+// This file is part of go-frogeum.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
+// go-frogeum is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// go-frogeum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/frogeum/go-frogeum/log"
 )
 
 // deployDashboard queries the user for various input on deploying a web-service
@@ -60,7 +60,7 @@ func (w *wizard) deployDashboard() {
 			available[service] = append(available[service], server)
 		}
 	}
-	for _, service := range []string{"ethstats", "explorer", "faucet"} {
+	for _, service := range []string{"ethstats", "explorer", "wallet", "faucet"} {
 		// Gather all the locally hosted pages of this type
 		var pages []string
 		for _, server := range available[service] {
@@ -78,6 +78,10 @@ func (w *wizard) deployDashboard() {
 			case "explorer":
 				if infos, err := checkExplorer(client, w.network); err == nil {
 					port = infos.port
+				}
+			case "wallet":
+				if infos, err := checkWallet(client, w.network); err == nil {
+					port = infos.webPort
 				}
 			case "faucet":
 				if infos, err := checkFaucet(client, w.network); err == nil {
@@ -123,6 +127,8 @@ func (w *wizard) deployDashboard() {
 			infos.ethstats = page
 		case "explorer":
 			infos.explorer = page
+		case "wallet":
+			infos.wallet = page
 		case "faucet":
 			infos.faucet = page
 		}

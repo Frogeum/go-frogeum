@@ -1,30 +1,32 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2017 The go-frogeum Authors
+// This file is part of go-frogeum.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
+// go-frogeum is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// go-frogeum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/frogeum/go-frogeum/log"
 )
 
 // makeWizard creates and returns a new puppeth wizard.
@@ -36,16 +38,17 @@ func makeWizard(network string) *wizard {
 		},
 		servers:  make(map[string]*sshClient),
 		services: make(map[string][]string),
+		in:       bufio.NewReader(os.Stdin),
 	}
 }
 
 // run displays some useful infos to the user, starting on the journey of
-// setting up a new or managing an existing Ethereum private network.
+// setting up a new or managing an existing Frogeum private network.
 func (w *wizard) run() {
 	fmt.Println("+-----------------------------------------------------------+")
-	fmt.Println("| Welcome to puppeth, your Ethereum private network manager |")
+	fmt.Println("| Welcome to puppeth, your Frogeum private network manager |")
 	fmt.Println("|                                                           |")
-	fmt.Println("| This tool lets you create a new Ethereum network down to  |")
+	fmt.Println("| This tool lets you create a new Frogeum network down to  |")
 	fmt.Println("| the genesis block, bootnodes, miners and ethstats servers |")
 	fmt.Println("| without the hassle that it would normally entail.         |")
 	fmt.Println("|                                                           |")
@@ -68,7 +71,7 @@ func (w *wizard) run() {
 			log.Error("I also like to live dangerously, still no spaces, hyphens or capital letters")
 		}
 	}
-	log.Info("Administering Ethereum network", "name", w.network)
+	log.Info("Administering Frogeum network", "name", w.network)
 
 	// Load initial configurations and connect to all live servers
 	w.conf.path = filepath.Join(os.Getenv("HOME"), ".puppeth", w.network)
@@ -79,17 +82,25 @@ func (w *wizard) run() {
 	} else if err := json.Unmarshal(blob, &w.conf); err != nil {
 		log.Crit("Previous configuration corrupted", "path", w.conf.path, "err", err)
 	} else {
-		// Dial all previously known servers
+		// Dial all previously known servers concurrently
+		var pend sync.WaitGroup
 		for server, pubkey := range w.conf.Servers {
-			log.Info("Dialing previously configured server", "server", server)
-			client, err := dial(server, pubkey)
-			if err != nil {
-				log.Error("Previous server unreachable", "server", server, "err", err)
-			}
-			w.lock.Lock()
-			w.servers[server] = client
-			w.lock.Unlock()
+			pend.Add(1)
+
+			go func(server string, pubkey []byte) {
+				defer pend.Done()
+
+				log.Info("Dialing previously configured server", "server", server)
+				client, err := dial(server, pubkey)
+				if err != nil {
+					log.Error("Previous server unreachable", "server", server, "err", err)
+				}
+				w.lock.Lock()
+				w.servers[server] = client
+				w.lock.Unlock()
+			}(server, pubkey)
 		}
+		pend.Wait()
 		w.networkStats()
 	}
 	// Basics done, loop ad infinitum about what to do

@@ -1,18 +1,18 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2017 The go-frogeum Authors
+// This file is part of go-frogeum.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
+// go-frogeum is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// go-frogeum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/frogeum/go-frogeum/log"
 )
 
 // deployEthstats queries the user for various input on deploying an ethstats
@@ -63,20 +63,20 @@ func (w *wizard) deployEthstats() {
 		fmt.Printf("What should be the secret password for the API? (default = %s)\n", infos.secret)
 		infos.secret = w.readDefaultString(infos.secret)
 	}
-	// Gather any banned lists to ban from reporting
+	// Gather any blacklists to ban from reporting
 	if existed {
 		fmt.Println()
-		fmt.Printf("Keep existing IP %v in the banned list (y/n)? (default = yes)\n", infos.banned)
+		fmt.Printf("Keep existing IP %v blacklist (y/n)? (default = yes)\n", infos.banned)
 		if !w.readDefaultYesNo(true) {
 			// The user might want to clear the entire list, although generally probably not
 			fmt.Println()
-			fmt.Printf("Clear out the banned list and start over (y/n)? (default = no)\n")
+			fmt.Printf("Clear out blacklist and start over (y/n)? (default = no)\n")
 			if w.readDefaultYesNo(false) {
 				infos.banned = nil
 			}
 			// Offer the user to explicitly add/remove certain IP addresses
 			fmt.Println()
-			fmt.Println("Which additional IP addresses should be in the banned list?")
+			fmt.Println("Which additional IP addresses should be blacklisted?")
 			for {
 				if ip := w.readIPAddress(); ip != "" {
 					infos.banned = append(infos.banned, ip)
@@ -85,7 +85,7 @@ func (w *wizard) deployEthstats() {
 				break
 			}
 			fmt.Println()
-			fmt.Println("Which IP addresses should not be in the banned list?")
+			fmt.Println("Which IP addresses should not be blacklisted?")
 			for {
 				if ip := w.readIPAddress(); ip != "" {
 					for i, addr := range infos.banned {

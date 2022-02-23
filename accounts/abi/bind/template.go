@@ -1,22 +1,22 @@
-// Copyright 2016 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2016 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package bind
 
-import "github.com/ethereum/go-ethereum/accounts/abi"
+import "github.com/frogeum/go-frogeum/accounts/abi"
 
 // tmplData is the data structure required to fill the binding template.
 type tmplData struct {
@@ -90,22 +90,20 @@ package {{.Package}}
 import (
 	"math/big"
 	"strings"
-	"errors"
 
-	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
+	frogeum "github.com/frogeum/go-frogeum"
+	"github.com/frogeum/go-frogeum/accounts/abi"
+	"github.com/frogeum/go-frogeum/accounts/abi/bind"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/event"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
-	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
-	_ = ethereum.NotFound
+	_ = frogeum.NotFound
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -122,48 +120,32 @@ var (
 {{end}}
 
 {{range $contract := .Contracts}}
-	// {{.Type}}MetaData contains all meta data concerning the {{.Type}} contract.
-	var {{.Type}}MetaData = &bind.MetaData{
-		ABI: "{{.InputABI}}",
-		{{if $contract.FuncSigs -}}
-		Sigs: map[string]string{
-			{{range $strsig, $binsig := .FuncSigs}}"{{$binsig}}": "{{$strsig}}",
-			{{end}}
-		},
-		{{end -}}
-		{{if .InputBin -}}
-		Bin: "0x{{.InputBin}}",
-		{{end}}
-	}
 	// {{.Type}}ABI is the input ABI used to generate the binding from.
-	// Deprecated: Use {{.Type}}MetaData.ABI instead.
-	var {{.Type}}ABI = {{.Type}}MetaData.ABI
+	const {{.Type}}ABI = "{{.InputABI}}"
 
 	{{if $contract.FuncSigs}}
-		// Deprecated: Use {{.Type}}MetaData.Sigs instead.
 		// {{.Type}}FuncSigs maps the 4-byte function signature to its string representation.
-		var {{.Type}}FuncSigs = {{.Type}}MetaData.Sigs
+		var {{.Type}}FuncSigs = map[string]string{
+			{{range $strsig, $binsig := .FuncSigs}}"{{$binsig}}": "{{$strsig}}",
+			{{end}}
+		}
 	{{end}}
 
 	{{if .InputBin}}
 		// {{.Type}}Bin is the compiled bytecode used for deploying new contracts.
-		// Deprecated: Use {{.Type}}MetaData.Bin instead.
-		var {{.Type}}Bin = {{.Type}}MetaData.Bin
+		var {{.Type}}Bin = "0x{{.InputBin}}"
 
-		// Deploy{{.Type}} deploys a new Ethereum contract, binding an instance of {{.Type}} to it.
+		// Deploy{{.Type}} deploys a new Frogeum contract, binding an instance of {{.Type}} to it.
 		func Deploy{{.Type}}(auth *bind.TransactOpts, backend bind.ContractBackend {{range .Constructor.Inputs}}, {{.Name}} {{bindtype .Type $structs}}{{end}}) (common.Address, *types.Transaction, *{{.Type}}, error) {
-		  parsed, err := {{.Type}}MetaData.GetAbi()
+		  parsed, err := abi.JSON(strings.NewReader({{.Type}}ABI))
 		  if err != nil {
 		    return common.Address{}, nil, nil, err
-		  }
-		  if parsed == nil {
-			return common.Address{}, nil, nil, errors.New("GetABI returned nil")
 		  }
 		  {{range $pattern, $name := .Libraries}}
 			{{decapitalise $name}}Addr, _, _, _ := Deploy{{capitalise $name}}(auth, backend)
 			{{$contract.Type}}Bin = strings.Replace({{$contract.Type}}Bin, "__${{$pattern}}$__", {{decapitalise $name}}Addr.String()[2:], -1)
 		  {{end}}
-		  address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex({{.Type}}Bin), backend {{range .Constructor.Inputs}}, {{.Name}}{{end}})
+		  address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex({{.Type}}Bin), backend {{range .Constructor.Inputs}}, {{.Name}}{{end}})
 		  if err != nil {
 		    return common.Address{}, nil, nil, err
 		  }
@@ -171,29 +153,29 @@ var (
 		}
 	{{end}}
 
-	// {{.Type}} is an auto generated Go binding around an Ethereum contract.
+	// {{.Type}} is an auto generated Go binding around an Frogeum contract.
 	type {{.Type}} struct {
 	  {{.Type}}Caller     // Read-only binding to the contract
 	  {{.Type}}Transactor // Write-only binding to the contract
 	  {{.Type}}Filterer   // Log filterer for contract events
 	}
 
-	// {{.Type}}Caller is an auto generated read-only Go binding around an Ethereum contract.
+	// {{.Type}}Caller is an auto generated read-only Go binding around an Frogeum contract.
 	type {{.Type}}Caller struct {
 	  contract *bind.BoundContract // Generic contract wrapper for the low level calls
 	}
 
-	// {{.Type}}Transactor is an auto generated write-only Go binding around an Ethereum contract.
+	// {{.Type}}Transactor is an auto generated write-only Go binding around an Frogeum contract.
 	type {{.Type}}Transactor struct {
 	  contract *bind.BoundContract // Generic contract wrapper for the low level calls
 	}
 
-	// {{.Type}}Filterer is an auto generated log filtering Go binding around an Ethereum contract events.
+	// {{.Type}}Filterer is an auto generated log filtering Go binding around an Frogeum contract events.
 	type {{.Type}}Filterer struct {
 	  contract *bind.BoundContract // Generic contract wrapper for the low level calls
 	}
 
-	// {{.Type}}Session is an auto generated Go binding around an Ethereum contract,
+	// {{.Type}}Session is an auto generated Go binding around an Frogeum contract,
 	// with pre-set call and transact options.
 	type {{.Type}}Session struct {
 	  Contract     *{{.Type}}        // Generic contract binding to set the session for
@@ -201,31 +183,31 @@ var (
 	  TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
 	}
 
-	// {{.Type}}CallerSession is an auto generated read-only Go binding around an Ethereum contract,
+	// {{.Type}}CallerSession is an auto generated read-only Go binding around an Frogeum contract,
 	// with pre-set call options.
 	type {{.Type}}CallerSession struct {
 	  Contract *{{.Type}}Caller // Generic contract caller binding to set the session for
 	  CallOpts bind.CallOpts    // Call options to use throughout this session
 	}
 
-	// {{.Type}}TransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+	// {{.Type}}TransactorSession is an auto generated write-only Go binding around an Frogeum contract,
 	// with pre-set transact options.
 	type {{.Type}}TransactorSession struct {
 	  Contract     *{{.Type}}Transactor // Generic contract transactor binding to set the session for
 	  TransactOpts bind.TransactOpts    // Transaction auth options to use throughout this session
 	}
 
-	// {{.Type}}Raw is an auto generated low-level Go binding around an Ethereum contract.
+	// {{.Type}}Raw is an auto generated low-level Go binding around an Frogeum contract.
 	type {{.Type}}Raw struct {
 	  Contract *{{.Type}} // Generic contract binding to access the raw methods on
 	}
 
-	// {{.Type}}CallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+	// {{.Type}}CallerRaw is an auto generated low-level read-only Go binding around an Frogeum contract.
 	type {{.Type}}CallerRaw struct {
 		Contract *{{.Type}}Caller // Generic read-only contract binding to access the raw methods on
 	}
 
-	// {{.Type}}TransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+	// {{.Type}}TransactorRaw is an auto generated low-level write-only Go binding around an Frogeum contract.
 	type {{.Type}}TransactorRaw struct {
 		Contract *{{.Type}}Transactor // Generic write-only contract binding to access the raw methods on
 	}
@@ -433,7 +415,7 @@ var (
 			event    string              // Event name to use for unpacking event data
 
 			logs chan types.Log        // Log channel receiving the found contract events
-			sub  ethereum.Subscription // Subscription for errors, completion and termination
+			sub  frogeum.Subscription // Subscription for errors, completion and termination
 			done bool                  // Whether the subscription completed delivering logs
 			fail error                 // Occurred error to stop iteration
 		}
@@ -578,7 +560,7 @@ const tmplSourceJava = `
 
 package {{.Package}};
 
-import org.ethereum.geth.*;
+import org.frogeum.gfro.*;
 import java.util.*;
 
 {{$structs := .Structs}}
@@ -600,9 +582,9 @@ import java.util.*;
 	// BYTECODE is the compiled bytecode used for deploying new contracts.
 	public final static String BYTECODE = "0x{{.InputBin}}";
 
-	// deploy deploys a new Ethereum contract, binding an instance of {{.Type}} to it.
-	public static {{.Type}} deploy(TransactOpts auth, EthereumClient client{{range .Constructor.Inputs}}, {{bindtype .Type $structs}} {{.Name}}{{end}}) throws Exception {
-		Interfaces args = Geth.newInterfaces({{(len .Constructor.Inputs)}});
+	// deploy deploys a new Frogeum contract, binding an instance of {{.Type}} to it.
+	public static {{.Type}} deploy(TransactOpts auth, FrogeumClient client{{range .Constructor.Inputs}}, {{bindtype .Type $structs}} {{.Name}}{{end}}) throws Exception {
+		Interfaces args = Gfro.newInterfaces({{(len .Constructor.Inputs)}});
 		String bytecode = BYTECODE;
 		{{if .Libraries}}
 
@@ -612,9 +594,9 @@ import java.util.*;
 		bytecode = bytecode.replace("__${{$pattern}}$__", {{decapitalise $name}}Inst.Address.getHex().substring(2));
 		{{end}}
 		{{end}}
-		{{range $index, $element := .Constructor.Inputs}}Interface arg{{$index}} = Geth.newInterface();arg{{$index}}.set{{namedtype (bindtype .Type $structs) .Type}}({{.Name}});args.set({{$index}},arg{{$index}});
+		{{range $index, $element := .Constructor.Inputs}}Interface arg{{$index}} = Gfro.newInterface();arg{{$index}}.set{{namedtype (bindtype .Type $structs) .Type}}({{.Name}});args.set({{$index}},arg{{$index}});
 		{{end}}
-		return new {{.Type}}(Geth.deployContract(auth, ABI, Geth.decodeFromHex(bytecode), client, args));
+		return new {{.Type}}(Gfro.deployContract(auth, ABI, Gfro.decodeFromHex(bytecode), client, args));
 	}
 
 	// Internal constructor used by contract deployment.
@@ -625,18 +607,18 @@ import java.util.*;
 	}
 	{{end}}
 
-	// Ethereum address where this contract is located at.
+	// Frogeum address where this contract is located at.
 	public final Address Address;
 
-	// Ethereum transaction in which this contract was deployed (if known!).
+	// Frogeum transaction in which this contract was deployed (if known!).
 	public final Transaction Deployer;
 
 	// Contract instance bound to a blockchain address.
 	private final BoundContract Contract;
 
 	// Creates a new instance of {{.Type}}, bound to a specific deployed contract.
-	public {{.Type}}(Address address, EthereumClient client) throws Exception {
-		this(Geth.bindContract(address, ABI, client));
+	public {{.Type}}(Address address, FrogeumClient client) throws Exception {
+		this(Gfro.bindContract(address, ABI, client));
 	}
 
 	{{range .Calls}}
@@ -652,16 +634,16 @@ import java.util.*;
 	//
 	// Solidity: {{.Original.String}}
 	public {{if gt (len .Normalized.Outputs) 1}}{{capitalise .Normalized.Name}}Results{{else if eq (len .Normalized.Outputs) 0}}void{{else}}{{range .Normalized.Outputs}}{{bindtype .Type $structs}}{{end}}{{end}} {{.Normalized.Name}}(CallOpts opts{{range .Normalized.Inputs}}, {{bindtype .Type $structs}} {{.Name}}{{end}}) throws Exception {
-		Interfaces args = Geth.newInterfaces({{(len .Normalized.Inputs)}});
-		{{range $index, $item := .Normalized.Inputs}}Interface arg{{$index}} = Geth.newInterface();arg{{$index}}.set{{namedtype (bindtype .Type $structs) .Type}}({{.Name}});args.set({{$index}},arg{{$index}});
+		Interfaces args = Gfro.newInterfaces({{(len .Normalized.Inputs)}});
+		{{range $index, $item := .Normalized.Inputs}}Interface arg{{$index}} = Gfro.newInterface();arg{{$index}}.set{{namedtype (bindtype .Type $structs) .Type}}({{.Name}});args.set({{$index}},arg{{$index}});
 		{{end}}
 
-		Interfaces results = Geth.newInterfaces({{(len .Normalized.Outputs)}});
-		{{range $index, $item := .Normalized.Outputs}}Interface result{{$index}} = Geth.newInterface(); result{{$index}}.setDefault{{namedtype (bindtype .Type $structs) .Type}}(); results.set({{$index}}, result{{$index}});
+		Interfaces results = Gfro.newInterfaces({{(len .Normalized.Outputs)}});
+		{{range $index, $item := .Normalized.Outputs}}Interface result{{$index}} = Gfro.newInterface(); result{{$index}}.setDefault{{namedtype (bindtype .Type $structs) .Type}}(); results.set({{$index}}, result{{$index}});
 		{{end}}
 
 		if (opts == null) {
-			opts = Geth.newCallOpts();
+			opts = Gfro.newCallOpts();
 		}
 		this.Contract.call(opts, results, "{{.Original.Name}}", args);
 		{{if gt (len .Normalized.Outputs) 1}}
@@ -679,8 +661,8 @@ import java.util.*;
 	//
 	// Solidity: {{.Original.String}}
 	public Transaction {{.Normalized.Name}}(TransactOpts opts{{range .Normalized.Inputs}}, {{bindtype .Type $structs}} {{.Name}}{{end}}) throws Exception {
-		Interfaces args = Geth.newInterfaces({{(len .Normalized.Inputs)}});
-		{{range $index, $item := .Normalized.Inputs}}Interface arg{{$index}} = Geth.newInterface();arg{{$index}}.set{{namedtype (bindtype .Type $structs) .Type}}({{.Name}});args.set({{$index}},arg{{$index}});
+		Interfaces args = Gfro.newInterfaces({{(len .Normalized.Inputs)}});
+		{{range $index, $item := .Normalized.Inputs}}Interface arg{{$index}} = Gfro.newInterface();arg{{$index}}.set{{namedtype (bindtype .Type $structs) .Type}}({{.Name}});args.set({{$index}},arg{{$index}});
 		{{end}}
 		return this.Contract.transact(opts, "{{.Original.Name}}"	, args);
 	}

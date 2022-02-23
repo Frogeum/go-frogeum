@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package fourbyte
 
@@ -20,9 +20,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/signer/core/apitypes"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/hexutil"
+	"github.com/frogeum/go-frogeum/signer/core"
 )
 
 func mixAddr(a string) (*common.MixedcaseAddress, error) {
@@ -36,7 +36,7 @@ func toHexUint(h string) hexutil.Uint64 {
 	b := big.NewInt(0).SetBytes(common.FromHex(h))
 	return hexutil.Uint64(b.Uint64())
 }
-func dummyTxArgs(t txtestcase) *apitypes.SendTxArgs {
+func dummyTxArgs(t txtestcase) *core.SendTxArgs {
 	to, _ := mixAddr(t.to)
 	from, _ := mixAddr(t.from)
 	n := toHexUint(t.n)
@@ -55,12 +55,12 @@ func dummyTxArgs(t txtestcase) *apitypes.SendTxArgs {
 		input = &a
 
 	}
-	return &apitypes.SendTxArgs{
+	return &core.SendTxArgs{
 		From:     *from,
 		To:       to,
 		Value:    value,
 		Nonce:    n,
-		GasPrice: &gasPrice,
+		GasPrice: gasPrice,
 		Gas:      gas,
 		Data:     data,
 		Input:    input,

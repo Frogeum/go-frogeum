@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package rawdb
 
@@ -21,12 +21,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/prque"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/prque"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 // InitDatabaseFromFreezer reinitializes an empty database from a previous batch
@@ -44,29 +44,24 @@ func InitDatabaseFromFreezer(db ethdb.Database) {
 		logged = start.Add(-7 * time.Second) // Unindex during import is fast, don't double log
 		hash   common.Hash
 	)
-	for i := uint64(0); i < frozen; {
-		// We read 100K hashes at a time, for a total of 3.2M
-		count := uint64(100_000)
-		if i+count > frozen {
-			count = frozen - i
-		}
-		data, err := db.AncientRange(freezerHashTable, i, count, 32*count)
-		if err != nil {
+	for i := uint64(0); i < frozen; i++ {
+		// Since the freezer has all data in sequential order on a file,
+		// it would be 'neat' to read more data in one go, and let the
+		// freezerdb return N items (e.g up to 1000 items per go)
+		// That would require an API change in Ancients though
+		if h, err := db.Ancient(freezerHashTable, i); err != nil {
 			log.Crit("Failed to init database from freezer", "err", err)
-		}
-		for j, h := range data {
-			number := i + uint64(j)
+		} else {
 			hash = common.BytesToHash(h)
-			WriteHeaderNumber(batch, hash, number)
-			// If enough data was accumulated in memory or we're at the last block, dump to disk
-			if batch.ValueSize() > ethdb.IdealBatchSize {
-				if err := batch.Write(); err != nil {
-					log.Crit("Failed to write data to db", "err", err)
-				}
-				batch.Reset()
-			}
 		}
-		i += uint64(len(data))
+		WriteHeaderNumber(batch, hash, i)
+		// If enough data was accumulated in memory or we're at the last block, dump to disk
+		if batch.ValueSize() > ethdb.IdealBatchSize {
+			if err := batch.Write(); err != nil {
+				log.Crit("Failed to write data to db", "err", err)
+			}
+			batch.Reset()
+		}
 		// If we've spent too much time already, notify the user of what we're doing
 		if time.Since(logged) > 8*time.Second {
 			log.Info("Initializing database from freezer", "total", frozen, "number", i, "hash", hash, "elapsed", common.PrettyDuration(time.Since(start)))
@@ -247,8 +242,7 @@ func indexTransactions(db ethdb.Database, from uint64, to uint64, interrupt chan
 	}
 }
 
-// IndexTransactions creates txlookup indices of the specified block range. The from
-// is included while to is excluded.
+// IndexTransactions creates txlookup indices of the specified block range.
 //
 // This function iterates canonical chain in reverse order, it has one main advantage:
 // We can write tx index tail flag periodically even without the whole indexing
@@ -340,7 +334,6 @@ func unindexTransactions(db ethdb.Database, from uint64, to uint64, interrupt ch
 }
 
 // UnindexTransactions removes txlookup indices of the specified block range.
-// The from is included while to is excluded.
 //
 // There is a passed channel, the whole procedure will be interrupted if any
 // signal received.

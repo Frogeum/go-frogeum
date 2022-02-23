@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package eth
 
@@ -21,19 +21,23 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/enr"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/metrics"
+	"github.com/frogeum/go-frogeum/p2p"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/p2p/enr"
+	"github.com/frogeum/go-frogeum/params"
+	"github.com/frogeum/go-frogeum/trie"
 )
 
 const (
 	// softResponseLimit is the target maximum size of replies to data retrievals.
 	softResponseLimit = 2 * 1024 * 1024
+
+	// estHeaderSize is the approximate size of an RLP encoded block header.
+	estHeaderSize = 500
 
 	// maxHeadersServe is the maximum number of block headers to serve. This number
 	// is there to limit the number of disk lookups.
@@ -65,6 +69,9 @@ type Backend interface {
 	// Chain retrieves the blockchain object to serve data.
 	Chain() *core.BlockChain
 
+	// StateBloom retrieves the bloom filter - if any - for state trie nodes.
+	StateBloom() *trie.SyncBloom
+
 	// TxPool retrieves the transaction pool object to serve data.
 	TxPool() TxPool
 
@@ -89,7 +96,7 @@ type Backend interface {
 
 // TxPool defines the methods needed by the protocol handler to serve transactions.
 type TxPool interface {
-	// Get retrieves the transaction from the local txpool with the given hash.
+	// Get retrieves the the transaction from the local txpool with the given hash.
 	Get(hash common.Hash) *types.Transaction
 }
 
@@ -127,7 +134,7 @@ func MakeProtocols(backend Backend, network uint64, dnsdisc enode.Iterator) []p2
 // NodeInfo represents a short summary of the `eth` sub-protocol metadata
 // known about the host peer.
 type NodeInfo struct {
-	Network    uint64              `json:"network"`    // Ethereum network ID (1=Frontier, 2=Morden, Ropsten=3, Rinkeby=4)
+	Network    uint64              `json:"network"`    // Frogeum network ID (1=Frontier, 2=Morden, Longcat=3, Rinkeby=4)
 	Difficulty *big.Int            `json:"difficulty"` // Total difficulty of the host's blockchain
 	Genesis    common.Hash         `json:"genesis"`    // SHA3 hash of the host's genesis block
 	Config     *params.ChainConfig `json:"config"`     // Chain configuration for the fork rules
@@ -164,21 +171,39 @@ type Decoder interface {
 	Time() time.Time
 }
 
+var eth65 = map[uint64]msgHandler{
+	GetBlockHeadersMsg:            handleGetBlockHeaders,
+	BlockHeadersMsg:               handleBlockHeaders,
+	GetBlockBodiesMsg:             handleGetBlockBodies,
+	BlockBodiesMsg:                handleBlockBodies,
+	GetNodeDataMsg:                handleGetNodeData,
+	NodeDataMsg:                   handleNodeData,
+	GetReceiptsMsg:                handleGetReceipts,
+	ReceiptsMsg:                   handleReceipts,
+	NewBlockHashesMsg:             handleNewBlockhashes,
+	NewBlockMsg:                   handleNewBlock,
+	TransactionsMsg:               handleTransactions,
+	NewPooledTransactionHashesMsg: handleNewPooledTransactionHashes,
+	GetPooledTransactionsMsg:      handleGetPooledTransactions,
+	PooledTransactionsMsg:         handlePooledTransactions,
+}
+
 var eth66 = map[uint64]msgHandler{
 	NewBlockHashesMsg:             handleNewBlockhashes,
 	NewBlockMsg:                   handleNewBlock,
 	TransactionsMsg:               handleTransactions,
 	NewPooledTransactionHashesMsg: handleNewPooledTransactionHashes,
-	GetBlockHeadersMsg:            handleGetBlockHeaders66,
-	BlockHeadersMsg:               handleBlockHeaders66,
-	GetBlockBodiesMsg:             handleGetBlockBodies66,
-	BlockBodiesMsg:                handleBlockBodies66,
-	GetNodeDataMsg:                handleGetNodeData66,
-	NodeDataMsg:                   handleNodeData66,
-	GetReceiptsMsg:                handleGetReceipts66,
-	ReceiptsMsg:                   handleReceipts66,
-	GetPooledTransactionsMsg:      handleGetPooledTransactions66,
-	PooledTransactionsMsg:         handlePooledTransactions66,
+	// eth66 messages with request-id
+	GetBlockHeadersMsg:       handleGetBlockHeaders66,
+	BlockHeadersMsg:          handleBlockHeaders66,
+	GetBlockBodiesMsg:        handleGetBlockBodies66,
+	BlockBodiesMsg:           handleBlockBodies66,
+	GetNodeDataMsg:           handleGetNodeData66,
+	NodeDataMsg:              handleNodeData66,
+	GetReceiptsMsg:           handleGetReceipts66,
+	ReceiptsMsg:              handleReceipts66,
+	GetPooledTransactionsMsg: handleGetPooledTransactions66,
+	PooledTransactionsMsg:    handlePooledTransactions66,
 }
 
 // handleMessage is invoked whenever an inbound message is received from a remote
@@ -194,11 +219,10 @@ func handleMessage(backend Backend, peer *Peer) error {
 	}
 	defer msg.Discard()
 
-	var handlers = eth66
-	//if peer.Version() >= ETH67 { // Left in as a sample when new protocol is added
-	//	handlers = eth67
-	//}
-
+	var handlers = eth65
+	if peer.Version() >= ETH66 {
+		handlers = eth66
+	}
 	// Track the amount of time it takes to serve the request and run the handler
 	if metrics.Enabled {
 		h := fmt.Sprintf("%s/%s/%d/%#02x", p2p.HandleHistName, ProtocolName, peer.Version(), msg.Code)

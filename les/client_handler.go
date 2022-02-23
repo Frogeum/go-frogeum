@@ -1,39 +1,38 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package les
 
 import (
 	"context"
 	"math/big"
-	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/core/forkid"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/protocols/eth"
-	"github.com/ethereum/go-ethereum/les/downloader"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/mclock"
+	"github.com/frogeum/go-frogeum/core/forkid"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/eth/downloader"
+	"github.com/frogeum/go-frogeum/eth/protocols/eth"
+	"github.com/frogeum/go-frogeum/light"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/p2p"
+	"github.com/frogeum/go-frogeum/params"
 )
 
 // clientHandler is responsible for receiving and processing all incoming server
@@ -44,7 +43,7 @@ type clientHandler struct {
 	checkpoint *params.TrustedCheckpoint
 	fetcher    *lightFetcher
 	downloader *downloader.Downloader
-	backend    *LightEthereum
+	backend    *LightFrogeum
 
 	closeCh chan struct{}
 	wg      sync.WaitGroup // WaitGroup used to track all connected peers.
@@ -54,7 +53,7 @@ type clientHandler struct {
 	syncEnd   func(header *types.Header) // Hook called when the syncing is done
 }
 
-func newClientHandler(ulcServers []string, ulcFraction int, checkpoint *params.TrustedCheckpoint, backend *LightEthereum) *clientHandler {
+func newClientHandler(ulcServers []string, ulcFraction int, checkpoint *params.TrustedCheckpoint, backend *LightFrogeum) *clientHandler {
 	handler := &clientHandler{
 		forkFilter: forkid.NewFilter(backend.blockchain),
 		checkpoint: checkpoint,
@@ -74,7 +73,7 @@ func newClientHandler(ulcServers []string, ulcFraction int, checkpoint *params.T
 		height = (checkpoint.SectionIndex+1)*params.CHTFrequency - 1
 	}
 	handler.fetcher = newLightFetcher(backend.blockchain, backend.engine, backend.peers, handler.ulc, backend.chainDb, backend.reqDist, handler.synchronise)
-	handler.downloader = downloader.New(height, backend.chainDb, backend.eventMux, nil, backend.blockchain, handler.removePeer)
+	handler.downloader = downloader.New(height, backend.chainDb, nil, backend.eventMux, nil, backend.blockchain, handler.removePeer)
 	handler.backend.peers.subscribe((*downloaderPeerNotify)(handler))
 	return handler
 }
@@ -100,20 +99,20 @@ func (h *clientHandler) runPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter)
 	defer peer.close()
 	h.wg.Add(1)
 	defer h.wg.Done()
-	err := h.handle(peer, false)
+	err := h.handle(peer)
 	return err
 }
 
-func (h *clientHandler) handle(p *serverPeer, noInitAnnounce bool) error {
+func (h *clientHandler) handle(p *serverPeer) error {
 	if h.backend.peers.len() >= h.backend.config.LightPeers && !p.Peer.Info().Network.Trusted {
 		return p2p.DiscTooManyPeers
 	}
-	p.Log().Debug("Light Ethereum peer connected", "name", p.Name())
+	p.Log().Debug("Light Frogeum peer connected", "name", p.Name())
 
 	// Execute the LES handshake
 	forkid := forkid.NewID(h.backend.blockchain.Config(), h.backend.genesis, h.backend.blockchain.CurrentHeader().Number.Uint64())
 	if err := p.Handshake(h.backend.blockchain.Genesis().Hash(), forkid, h.forkFilter); err != nil {
-		p.Log().Debug("Light Ethereum handshake failed", "err", err)
+		p.Log().Debug("Light Frogeum handshake failed", "err", err)
 		return err
 	}
 	// Register peer with the server pool
@@ -131,7 +130,7 @@ func (h *clientHandler) handle(p *serverPeer, noInitAnnounce bool) error {
 	}
 	// Register the peer locally
 	if err := h.backend.peers.register(p); err != nil {
-		p.Log().Error("Light Ethereum peer registration failed", "err", err)
+		p.Log().Error("Light Frogeum peer registration failed", "err", err)
 		return err
 	}
 
@@ -143,12 +142,7 @@ func (h *clientHandler) handle(p *serverPeer, noInitAnnounce bool) error {
 		connectionTimer.Update(time.Duration(mclock.Now() - connectedAt))
 		serverConnectionGauge.Update(int64(h.backend.peers.len()))
 	}()
-
-	// Discard all the announces after the transition
-	// Also discarding initial signal to prevent syncing during testing.
-	if !(noInitAnnounce || h.backend.merger.TDDReached()) {
-		h.fetcher.announce(p, &announceData{Hash: p.headInfo.Hash, Number: p.headInfo.Number, Td: p.headInfo.Td})
-	}
+	h.fetcher.announce(p, &announceData{Hash: p.headInfo.Hash, Number: p.headInfo.Number, Td: p.headInfo.Td})
 
 	// Mark the peer starts to be served.
 	atomic.StoreUint32(&p.serving, 1)
@@ -157,7 +151,7 @@ func (h *clientHandler) handle(p *serverPeer, noInitAnnounce bool) error {
 	// Spawn a main loop to handle all incoming messages.
 	for {
 		if err := h.handleMsg(p); err != nil {
-			p.Log().Debug("Light Ethereum message handling failed", "err", err)
+			p.Log().Debug("Light Frogeum message handling failed", "err", err)
 			p.fcServer.DumpLogs()
 			return err
 		}
@@ -172,7 +166,7 @@ func (h *clientHandler) handleMsg(p *serverPeer) error {
 	if err != nil {
 		return err
 	}
-	p.Log().Trace("Light Ethereum message arrived", "code", msg.Code, "bytes", msg.Size)
+	p.Log().Trace("Light Frogeum message arrived", "code", msg.Code, "bytes", msg.Size)
 
 	if msg.Size > ProtocolMaxMsgSize {
 		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
@@ -214,11 +208,7 @@ func (h *clientHandler) handleMsg(p *serverPeer) error {
 
 			// Update peer head information first and then notify the announcement
 			p.updateHead(req.Hash, req.Number, req.Td)
-
-			// Discard all the announces after the transition
-			if !h.backend.merger.TDDReached() {
-				h.fetcher.announce(p, &req)
-			}
+			h.fetcher.announce(p, &req)
 		}
 	case msg.Code == BlockHeadersMsg:
 		p.Log().Trace("Received block header response message")
@@ -398,7 +388,7 @@ func (pc *peerConnection) RequestHeadersByHash(origin common.Hash, amount int, s
 			return dp.(*serverPeer) == pc.peer
 		},
 		request: func(dp distPeer) func() {
-			reqID := rand.Uint64()
+			reqID := genReqID()
 			peer := dp.(*serverPeer)
 			cost := peer.getRequestCost(GetBlockHeadersMsg, amount)
 			peer.fcServer.QueuedRequest(reqID, cost)
@@ -422,7 +412,7 @@ func (pc *peerConnection) RequestHeadersByNumber(origin uint64, amount int, skip
 			return dp.(*serverPeer) == pc.peer
 		},
 		request: func(dp distPeer) func() {
-			reqID := rand.Uint64()
+			reqID := genReqID()
 			peer := dp.(*serverPeer)
 			cost := peer.getRequestCost(GetBlockHeadersMsg, amount)
 			peer.fcServer.QueuedRequest(reqID, cost)
@@ -439,7 +429,7 @@ func (pc *peerConnection) RequestHeadersByNumber(origin uint64, amount int, skip
 // RetrieveSingleHeaderByNumber requests a single header by the specified block
 // number. This function will wait the response until it's timeout or delivered.
 func (pc *peerConnection) RetrieveSingleHeaderByNumber(context context.Context, number uint64) (*types.Header, error) {
-	reqID := rand.Uint64()
+	reqID := genReqID()
 	rq := &distReq{
 		getCost: func(dp distPeer) uint64 {
 			peer := dp.(*serverPeer)
@@ -481,7 +471,7 @@ func (d *downloaderPeerNotify) registerPeer(p *serverPeer) {
 		handler: h,
 		peer:    p,
 	}
-	h.downloader.RegisterLightPeer(p.id, eth.ETH66, pc)
+	h.downloader.RegisterLightPeer(p.id, eth.ETH65, pc)
 }
 
 func (d *downloaderPeerNotify) unregisterPeer(p *serverPeer) {

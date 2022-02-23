@@ -1,18 +1,18 @@
-// Copyright 2016 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2016 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package ethstats implements the network stats reporting service.
 package ethstats
@@ -24,26 +24,27 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	ethproto "github.com/ethereum/go-ethereum/eth/protocols/eth"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/les"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/miner"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/mclock"
+	"github.com/frogeum/go-frogeum/consensus"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/eth/downloader"
+	ethproto "github.com/frogeum/go-frogeum/eth/protocols/eth"
+	"github.com/frogeum/go-frogeum/event"
+	"github.com/frogeum/go-frogeum/les"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/miner"
+	"github.com/frogeum/go-frogeum/node"
+	"github.com/frogeum/go-frogeum/p2p"
+	"github.com/frogeum/go-frogeum/rpc"
 	"github.com/gorilla/websocket"
 )
 
@@ -67,7 +68,7 @@ type backend interface {
 	HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error)
 	GetTd(ctx context.Context, hash common.Hash) *big.Int
 	Stats() (pending int, queued int)
-	SyncProgress() ethereum.SyncProgress
+	Downloader() *downloader.Downloader
 }
 
 // fullNodeBackend encompasses the functionality necessary for a full node
@@ -77,10 +78,10 @@ type fullNodeBackend interface {
 	Miner() *miner.Miner
 	BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Block, error)
 	CurrentBlock() *types.Block
-	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
+	SuggestPrice(ctx context.Context) (*big.Int, error)
 }
 
-// Service implements an Ethereum netstats reporting daemon that pushes local
+// Service implements an Frogeum netstats reporting daemon that pushes local
 // chain statistics up to a monitoring server.
 type Service struct {
 	server  *p2p.Server // Peer-to-peer server to retrieve networking infos
@@ -143,43 +144,21 @@ func (w *connWrapper) Close() error {
 	return w.conn.Close()
 }
 
-// parseEthstatsURL parses the netstats connection url.
-// URL argument should be of the form <nodename:secret@host:port>
-// If non-erroring, the returned slice contains 3 elements: [nodename, pass, host]
-func parseEthstatsURL(url string) (parts []string, err error) {
-	err = fmt.Errorf("invalid netstats url: \"%s\", should be nodename:secret@host:port", url)
-
-	hostIndex := strings.LastIndex(url, "@")
-	if hostIndex == -1 || hostIndex == len(url)-1 {
-		return nil, err
-	}
-	preHost, host := url[:hostIndex], url[hostIndex+1:]
-
-	passIndex := strings.LastIndex(preHost, ":")
-	if passIndex == -1 {
-		return []string{preHost, "", host}, nil
-	}
-	nodename, pass := preHost[:passIndex], ""
-	if passIndex != len(preHost)-1 {
-		pass = preHost[passIndex+1:]
-	}
-
-	return []string{nodename, pass, host}, nil
-}
-
 // New returns a monitoring service ready for stats reporting.
 func New(node *node.Node, backend backend, engine consensus.Engine, url string) error {
-	parts, err := parseEthstatsURL(url)
-	if err != nil {
-		return err
+	// Parse the netstats connection url
+	re := regexp.MustCompile("([^:@]*)(:([^@]*))?@(.+)")
+	parts := re.FindStringSubmatch(url)
+	if len(parts) != 5 {
+		return fmt.Errorf("invalid netstats url: \"%s\", should be nodename:secret@host:port", url)
 	}
 	ethstats := &Service{
 		backend: backend,
 		engine:  engine,
 		server:  node.Server(),
-		node:    parts[0],
-		pass:    parts[1],
-		host:    parts[2],
+		node:    parts[1],
+		pass:    parts[3],
+		host:    parts[4],
 		pongCh:  make(chan struct{}),
 		histCh:  make(chan []uint64, 1),
 	}
@@ -353,7 +332,7 @@ func (s *Service) loop(chainHeadCh chan core.ChainHeadEvent, txEventCh chan core
 // it, if they themselves are requests it initiates a reply, and lastly it drops
 // unknown packets.
 func (s *Service) readLoop(conn *connWrapper) {
-	// If the read loop exits, close the connection
+	// If the read loop exists, close the connection
 	defer conn.Close()
 
 	for {
@@ -777,16 +756,13 @@ func (s *Service) reportStats(conn *connWrapper) error {
 		mining = fullBackend.Miner().Mining()
 		hashrate = int(fullBackend.Miner().Hashrate())
 
-		sync := fullBackend.SyncProgress()
+		sync := fullBackend.Downloader().Progress()
 		syncing = fullBackend.CurrentHeader().Number.Uint64() >= sync.HighestBlock
 
-		price, _ := fullBackend.SuggestGasTipCap(context.Background())
+		price, _ := fullBackend.SuggestPrice(context.Background())
 		gasprice = int(price.Uint64())
-		if basefee := fullBackend.CurrentHeader().BaseFee; basefee != nil {
-			gasprice += int(basefee.Uint64())
-		}
 	} else {
-		sync := s.backend.SyncProgress()
+		sync := s.backend.Downloader().Progress()
 		syncing = s.backend.CurrentHeader().Number.Uint64() >= sync.HighestBlock
 	}
 	// Assemble the node stats and send it to the server

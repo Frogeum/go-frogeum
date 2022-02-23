@@ -1,231 +1,307 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package catalyst implements the temporary eth1/eth2 RPC integration.
 package catalyst
 
 import (
-	"crypto/sha256"
-	"encoding/binary"
+	"errors"
 	"fmt"
+	"math/big"
+	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/beacon"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/state"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/eth"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/node"
+	chainParams "github.com/frogeum/go-frogeum/params"
+	"github.com/frogeum/go-frogeum/rpc"
+	"github.com/frogeum/go-frogeum/trie"
 )
 
-// Register adds catalyst APIs to the full node.
-func Register(stack *node.Node, backend *eth.Ethereum) error {
-	log.Warn("Catalyst mode enabled", "protocol", "eth")
+// Register adds catalyst APIs to the node.
+func Register(stack *node.Node, backend *eth.Frogeum) error {
+	chainconfig := backend.BlockChain().Config()
+	if chainconfig.CatalystBlock == nil {
+		return errors.New("catalystBlock is not set in genesis config")
+	} else if chainconfig.CatalystBlock.Sign() != 0 {
+		return errors.New("catalystBlock of genesis config must be zero")
+	}
+
+	log.Warn("Catalyst mode enabled")
 	stack.RegisterAPIs([]rpc.API{
 		{
-			Namespace: "engine",
+			Namespace: "consensus",
 			Version:   "1.0",
-			Service:   NewConsensusAPI(backend),
+			Service:   newConsensusAPI(backend),
 			Public:    true,
 		},
 	})
 	return nil
 }
 
-type ConsensusAPI struct {
-	eth            *eth.Ethereum
-	preparedBlocks *payloadQueue // preparedBlocks caches payloads (*ExecutableDataV1) by payload ID (PayloadID)
+type consensusAPI struct {
+	eth *eth.Frogeum
 }
 
-// NewConsensusAPI creates a new consensus api for the given backend.
-// The underlying blockchain needs to have a valid terminal total difficulty set.
-func NewConsensusAPI(eth *eth.Ethereum) *ConsensusAPI {
-	if eth.BlockChain().Config().TerminalTotalDifficulty == nil {
-		panic("Catalyst started without valid total difficulty")
-	}
-	return &ConsensusAPI{
-		eth:            eth,
-		preparedBlocks: newPayloadQueue(),
-	}
+func newConsensusAPI(eth *eth.Frogeum) *consensusAPI {
+	return &consensusAPI{eth: eth}
 }
 
-// ForkchoiceUpdatedV1 has several responsibilities:
-// If the method is called with an empty head block:
-// 		we return success, which can be used to check if the catalyst mode is enabled
-// If the total difficulty was not reached:
-// 		we return INVALID
-// If the finalizedBlockHash is set:
-// 		we check if we have the finalizedBlockHash in our db, if not we start a sync
-// We try to set our blockchain to the headBlock
-// If there are payloadAttributes:
-// 		we try to assemble a block with the payloadAttributes and return its payloadID
-func (api *ConsensusAPI) ForkchoiceUpdatedV1(heads beacon.ForkchoiceStateV1, payloadAttributes *beacon.PayloadAttributesV1) (beacon.ForkChoiceResponse, error) {
-	log.Trace("Engine API request received", "method", "ForkChoiceUpdated", "head", heads.HeadBlockHash, "finalized", heads.FinalizedBlockHash, "safe", heads.SafeBlockHash)
-	if heads.HeadBlockHash == (common.Hash{}) {
-		return beacon.ForkChoiceResponse{Status: beacon.SUCCESS.Status, PayloadID: nil}, nil
-	}
-	if err := api.checkTerminalTotalDifficulty(heads.HeadBlockHash); err != nil {
-		if block := api.eth.BlockChain().GetBlockByHash(heads.HeadBlockHash); block == nil {
-			// TODO (MariusVanDerWijden) trigger sync
-			return beacon.SYNCING, nil
-		}
-		return beacon.INVALID, err
-	}
-	// If the finalized block is set, check if it is in our blockchain
-	if heads.FinalizedBlockHash != (common.Hash{}) {
-		if block := api.eth.BlockChain().GetBlockByHash(heads.FinalizedBlockHash); block == nil {
-			// TODO (MariusVanDerWijden) trigger sync
-			return beacon.SYNCING, nil
-		}
-	}
-	// SetHead
-	if err := api.setHead(heads.HeadBlockHash); err != nil {
-		return beacon.INVALID, err
-	}
-	// Assemble block (if needed). It only works for full node.
-	if payloadAttributes != nil {
-		data, err := api.assembleBlock(heads.HeadBlockHash, payloadAttributes)
-		if err != nil {
-			return beacon.INVALID, err
-		}
-		id := computePayloadId(heads.HeadBlockHash, payloadAttributes)
-		api.preparedBlocks.put(id, data)
-		log.Info("Created payload", "payloadID", id)
-		return beacon.ForkChoiceResponse{Status: beacon.SUCCESS.Status, PayloadID: &id}, nil
-	}
-	return beacon.ForkChoiceResponse{Status: beacon.SUCCESS.Status, PayloadID: nil}, nil
+// blockExecutionEnv gathers all the data required to execute
+// a block, either when assembling it or when inserting it.
+type blockExecutionEnv struct {
+	chain   *core.BlockChain
+	state   *state.StateDB
+	tcount  int
+	gasPool *core.GasPool
+
+	header   *types.Header
+	txs      []*types.Transaction
+	receipts []*types.Receipt
 }
 
-// GetPayloadV1 returns a cached payload by id.
-func (api *ConsensusAPI) GetPayloadV1(payloadID beacon.PayloadID) (*beacon.ExecutableDataV1, error) {
-	log.Trace("Engine API request received", "method", "GetPayload", "id", payloadID)
-	data := api.preparedBlocks.get(payloadID)
-	if data == nil {
-		return nil, &beacon.UnknownPayload
-	}
-	return data, nil
-}
-
-// ExecutePayloadV1 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
-func (api *ConsensusAPI) ExecutePayloadV1(params beacon.ExecutableDataV1) (beacon.ExecutePayloadResponse, error) {
-	log.Trace("Engine API request received", "method", "ExecutePayload", params.BlockHash, "number", params.Number)
-	block, err := beacon.ExecutableDataToBlock(params)
+func (env *blockExecutionEnv) commitTransaction(tx *types.Transaction, coinbase common.Address) error {
+	vmconfig := *env.chain.GetVMConfig()
+	receipt, err := core.ApplyTransaction(env.chain.Config(), env.chain, &coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, vmconfig)
 	if err != nil {
-		return api.invalid(), err
+		return err
 	}
-	if !api.eth.BlockChain().HasBlock(block.ParentHash(), block.NumberU64()-1) {
-		/*
-			TODO (MariusVanDerWijden) reenable once sync is merged
-			if err := api.eth.Downloader().BeaconSync(api.eth.SyncMode(), block.Header()); err != nil {
-				return SYNCING, err
-			}
-		*/
-		// TODO (MariusVanDerWijden) we should return nil here not empty hash
-		return beacon.ExecutePayloadResponse{Status: beacon.SYNCING.Status, LatestValidHash: common.Hash{}}, nil
-	}
-	parent := api.eth.BlockChain().GetBlockByHash(params.ParentHash)
-	td := api.eth.BlockChain().GetTd(parent.Hash(), block.NumberU64()-1)
-	ttd := api.eth.BlockChain().Config().TerminalTotalDifficulty
-	if td.Cmp(ttd) < 0 {
-		return api.invalid(), fmt.Errorf("can not execute payload on top of block with low td got: %v threshold %v", td, ttd)
-	}
-	log.Trace("Inserting block without head", "hash", block.Hash(), "number", block.Number)
-	if err := api.eth.BlockChain().InsertBlockWithoutSetHead(block); err != nil {
-		return api.invalid(), err
-	}
-
-	if merger := api.eth.Merger(); !merger.TDDReached() {
-		merger.ReachTTD()
-	}
-	return beacon.ExecutePayloadResponse{Status: beacon.VALID.Status, LatestValidHash: block.Hash()}, nil
+	env.txs = append(env.txs, tx)
+	env.receipts = append(env.receipts, receipt)
+	return nil
 }
 
-// computePayloadId computes a pseudo-random payloadid, based on the parameters.
-func computePayloadId(headBlockHash common.Hash, params *beacon.PayloadAttributesV1) beacon.PayloadID {
-	// Hash
-	hasher := sha256.New()
-	hasher.Write(headBlockHash[:])
-	binary.Write(hasher, binary.BigEndian, params.Timestamp)
-	hasher.Write(params.Random[:])
-	hasher.Write(params.SuggestedFeeRecipient[:])
-	var out beacon.PayloadID
-	copy(out[:], hasher.Sum(nil)[:8])
-	return out
-}
-
-// invalid returns a response "INVALID" with the latest valid hash set to the current head.
-func (api *ConsensusAPI) invalid() beacon.ExecutePayloadResponse {
-	return beacon.ExecutePayloadResponse{Status: beacon.INVALID.Status, LatestValidHash: api.eth.BlockChain().CurrentHeader().Hash()}
-}
-
-// assembleBlock creates a new block and returns the "execution
-// data" required for beacon clients to process the new block.
-func (api *ConsensusAPI) assembleBlock(parentHash common.Hash, params *beacon.PayloadAttributesV1) (*beacon.ExecutableDataV1, error) {
-	log.Info("Producing block", "parentHash", parentHash)
-	block, err := api.eth.Miner().GetSealingBlock(parentHash, params.Timestamp, params.SuggestedFeeRecipient, params.Random)
+func (api *consensusAPI) makeEnv(parent *types.Block, header *types.Header) (*blockExecutionEnv, error) {
+	state, err := api.eth.BlockChain().StateAt(parent.Root())
 	if err != nil {
 		return nil, err
 	}
-	return beacon.BlockToExecutableData(block), nil
+	env := &blockExecutionEnv{
+		chain:   api.eth.BlockChain(),
+		state:   state,
+		header:  header,
+		gasPool: new(core.GasPool).AddGas(header.GasLimit),
+	}
+	return env, nil
+}
+
+// AssembleBlock creates a new block, inserts it into the chain, and returns the "execution
+// data" required for eth2 clients to process the new block.
+func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableData, error) {
+	log.Info("Producing block", "parentHash", params.ParentHash)
+
+	bc := api.eth.BlockChain()
+	parent := bc.GetBlockByHash(params.ParentHash)
+	if parent == nil {
+		log.Warn("Cannot assemble block with parent hash to unknown block", "parentHash", params.ParentHash)
+		return nil, fmt.Errorf("cannot assemble block with unknown parent %s", params.ParentHash)
+	}
+
+	pool := api.eth.TxPool()
+
+	if parent.Time() >= params.Timestamp {
+		return nil, fmt.Errorf("child timestamp lower than parent's: %d >= %d", parent.Time(), params.Timestamp)
+	}
+	if now := uint64(time.Now().Unix()); params.Timestamp > now+1 {
+		wait := time.Duration(params.Timestamp-now) * time.Second
+		log.Info("Producing block too far in the future", "wait", common.PrettyDuration(wait))
+		time.Sleep(wait)
+	}
+
+	pending, err := pool.Pending()
+	if err != nil {
+		return nil, err
+	}
+
+	coinbase, err := api.eth.Popcatbase()
+	if err != nil {
+		return nil, err
+	}
+	num := parent.Number()
+	header := &types.Header{
+		ParentHash: parent.Hash(),
+		Number:     num.Add(num, common.Big1),
+		Coinbase:   coinbase,
+		GasLimit:   parent.GasLimit(), // Keep the gas limit constant in this prototype
+		Extra:      []byte{},
+		Time:       params.Timestamp,
+	}
+	err = api.eth.Engine().Prepare(bc, header)
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := api.makeEnv(parent, header)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		signer       = types.MakeSigner(bc.Config(), header.Number)
+		txHeap       = types.NewTransactionsByPriceAndNonce(signer, pending)
+		transactions []*types.Transaction
+	)
+	for {
+		if env.gasPool.Gas() < chainParams.TxGas {
+			log.Trace("Not enough gas for further transactions", "have", env.gasPool, "want", chainParams.TxGas)
+			break
+		}
+		tx := txHeap.Peek()
+		if tx == nil {
+			break
+		}
+
+		// The sender is only for logging purposes, and it doesn't really matter if it's correct.
+		from, _ := types.Sender(signer, tx)
+
+		// Execute the transaction
+		env.state.Prepare(tx.Hash(), common.Hash{}, env.tcount)
+		err = env.commitTransaction(tx, coinbase)
+		switch err {
+		case core.ErrGasLimitReached:
+			// Pop the current out-of-gas transaction without shifting in the next from the account
+			log.Trace("Gas limit exceeded for current block", "sender", from)
+			txHeap.Pop()
+
+		case core.ErrNonceTooLow:
+			// New head notification data race between the transaction pool and miner, shift
+			log.Trace("Skipping transaction with low nonce", "sender", from, "nonce", tx.Nonce())
+			txHeap.Shift()
+
+		case core.ErrNonceTooHigh:
+			// Reorg notification data race between the transaction pool and miner, skip account =
+			log.Trace("Skipping account with high nonce", "sender", from, "nonce", tx.Nonce())
+			txHeap.Pop()
+
+		case nil:
+			// Everything ok, collect the logs and shift in the next transaction from the same account
+			env.tcount++
+			txHeap.Shift()
+			transactions = append(transactions, tx)
+
+		default:
+			// Strange error, discard the transaction and get the next in line (note, the
+			// nonce-too-high clause will prevent us from executing in vain).
+			log.Debug("Transaction failed, account skipped", "hash", tx.Hash(), "err", err)
+			txHeap.Shift()
+		}
+	}
+
+	// Create the block.
+	block, err := api.eth.Engine().FinalizeAndAssemble(bc, header, env.state, transactions, nil /* uncles */, env.receipts)
+	if err != nil {
+		return nil, err
+	}
+	return &executableData{
+		BlockHash:    block.Hash(),
+		ParentHash:   block.ParentHash(),
+		Miner:        block.Coinbase(),
+		StateRoot:    block.Root(),
+		Number:       block.NumberU64(),
+		GasLimit:     block.GasLimit(),
+		GasUsed:      block.GasUsed(),
+		Timestamp:    block.Time(),
+		ReceiptRoot:  block.ReceiptHash(),
+		LogsBloom:    block.Bloom().Bytes(),
+		Transactions: encodeTransactions(block.Transactions()),
+	}, nil
+}
+
+func encodeTransactions(txs []*types.Transaction) [][]byte {
+	var enc = make([][]byte, len(txs))
+	for i, tx := range txs {
+		enc[i], _ = tx.MarshalBinary()
+	}
+	return enc
+}
+
+func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
+	var txs = make([]*types.Transaction, len(enc))
+	for i, encTx := range enc {
+		var tx types.Transaction
+		if err := tx.UnmarshalBinary(encTx); err != nil {
+			return nil, fmt.Errorf("invalid transaction %d: %v", i, err)
+		}
+		txs[i] = &tx
+	}
+	return txs, nil
+}
+
+func insertBlockParamsToBlock(params executableData) (*types.Block, error) {
+	txs, err := decodeTransactions(params.Transactions)
+	if err != nil {
+		return nil, err
+	}
+
+	number := big.NewInt(0)
+	number.SetUint64(params.Number)
+	header := &types.Header{
+		ParentHash:  params.ParentHash,
+		UncleHash:   types.EmptyUncleHash,
+		Coinbase:    params.Miner,
+		Root:        params.StateRoot,
+		TxHash:      types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil)),
+		ReceiptHash: params.ReceiptRoot,
+		Bloom:       types.BytesToBloom(params.LogsBloom),
+		Difficulty:  big.NewInt(1),
+		Number:      number,
+		GasLimit:    params.GasLimit,
+		GasUsed:     params.GasUsed,
+		Time:        params.Timestamp,
+	}
+	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */)
+	return block, nil
+}
+
+// NewBlock creates an Eth1 block, inserts it in the chain, and either returns true,
+// or false + an error. This is a bit redundant for go, but simplifies things on the
+// eth2 side.
+func (api *consensusAPI) NewBlock(params executableData) (*newBlockResponse, error) {
+	parent := api.eth.BlockChain().GetBlockByHash(params.ParentHash)
+	if parent == nil {
+		return &newBlockResponse{false}, fmt.Errorf("could not find parent %x", params.ParentHash)
+	}
+	block, err := insertBlockParamsToBlock(params)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = api.eth.BlockChain().InsertChainWithoutSealVerification(block)
+	return &newBlockResponse{err == nil}, err
 }
 
 // Used in tests to add a the list of transactions from a block to the tx pool.
-func (api *ConsensusAPI) insertTransactions(txs types.Transactions) error {
-	for _, tx := range txs {
+func (api *consensusAPI) addBlockTxs(block *types.Block) error {
+	for _, tx := range block.Transactions() {
 		api.eth.TxPool().AddLocal(tx)
 	}
 	return nil
 }
 
-func (api *ConsensusAPI) checkTerminalTotalDifficulty(head common.Hash) error {
-	// shortcut if we entered PoS already
-	if api.eth.Merger().PoSFinalized() {
-		return nil
-	}
-	// make sure the parent has enough terminal total difficulty
-	newHeadBlock := api.eth.BlockChain().GetBlockByHash(head)
-	if newHeadBlock == nil {
-		return &beacon.GenericServerError
-	}
-	td := api.eth.BlockChain().GetTd(newHeadBlock.Hash(), newHeadBlock.NumberU64())
-	if td != nil && td.Cmp(api.eth.BlockChain().Config().TerminalTotalDifficulty) < 0 {
-		return &beacon.InvalidTB
-	}
-	return nil
+// FinalizeBlock is called to mark a block as synchronized, so
+// that data that is no longer needed can be removed.
+func (api *consensusAPI) FinalizeBlock(blockHash common.Hash) (*genericResponse, error) {
+	return &genericResponse{true}, nil
 }
 
-// setHead is called to perform a force choice.
-func (api *ConsensusAPI) setHead(newHead common.Hash) error {
-	log.Info("Setting head", "head", newHead)
-	headBlock := api.eth.BlockChain().CurrentBlock()
-	if headBlock.Hash() == newHead {
-		return nil
-	}
-	newHeadBlock := api.eth.BlockChain().GetBlockByHash(newHead)
-	if newHeadBlock == nil {
-		return &beacon.GenericServerError
-	}
-	if err := api.eth.BlockChain().SetChainHead(newHeadBlock); err != nil {
-		return err
-	}
-	// Trigger the transition if it's the first `NewHead` event.
-	if merger := api.eth.Merger(); !merger.PoSFinalized() {
-		merger.FinalizePoS()
-	}
-	// TODO (MariusVanDerWijden) are we really synced now?
-	api.eth.SetSynced()
-	return nil
+// SetHead is called to perform a force choice.
+func (api *consensusAPI) SetHead(newHead common.Hash) (*genericResponse, error) {
+	return &genericResponse{true}, nil
 }

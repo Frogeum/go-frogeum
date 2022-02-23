@@ -1,18 +1,18 @@
-// Copyright 2018 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2018 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package core
 
@@ -24,10 +24,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/console/prompt"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/frogeum/go-frogeum/common/hexutil"
+	"github.com/frogeum/go-frogeum/console/prompt"
+	"github.com/frogeum/go-frogeum/internal/ethapi"
+	"github.com/frogeum/go-frogeum/log"
 )
 
 type CommandlineUI struct {
@@ -113,15 +113,10 @@ func (ui *CommandlineUI) ApproveTx(request *SignTxRequest) (SignTxResponse, erro
 	} else {
 		fmt.Printf("to:    <contact creation>\n")
 	}
-	fmt.Printf("from:               %v\n", request.Transaction.From.String())
-	fmt.Printf("value:              %v wei\n", weival)
-	fmt.Printf("gas:                %v (%v)\n", request.Transaction.Gas, uint64(request.Transaction.Gas))
-	if request.Transaction.MaxFeePerGas != nil {
-		fmt.Printf("maxFeePerGas:          %v wei\n", request.Transaction.MaxFeePerGas.ToInt())
-		fmt.Printf("maxPriorityFeePerGas:  %v wei\n", request.Transaction.MaxPriorityFeePerGas.ToInt())
-	} else {
-		fmt.Printf("gasprice: %v wei\n", request.Transaction.GasPrice.ToInt())
-	}
+	fmt.Printf("from:     %v\n", request.Transaction.From.String())
+	fmt.Printf("value:    %v wei\n", weival)
+	fmt.Printf("gas:      %v (%v)\n", request.Transaction.Gas, uint64(request.Transaction.Gas))
+	fmt.Printf("gasprice: %v wei\n", request.Transaction.GasPrice.ToInt())
 	fmt.Printf("nonce:    %v (%v)\n", request.Transaction.Nonce, uint64(request.Transaction.Nonce))
 	if chainId := request.Transaction.ChainID; chainId != nil {
 		fmt.Printf("chainid:  %v\n", chainId)

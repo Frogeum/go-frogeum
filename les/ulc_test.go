@@ -1,18 +1,18 @@
-// Copyright 2018 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2018 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package les
 
@@ -20,13 +20,12 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/p2p"
+	"github.com/frogeum/go-frogeum/p2p/enode"
 )
 
 func TestULCAnnounceThresholdLes2(t *testing.T) { testULCAnnounceThreshold(t, 2) }
@@ -66,7 +65,7 @@ func testULCAnnounceThreshold(t *testing.T, protocol int) {
 
 		// Connect all servers.
 		for i := 0; i < len(servers); i++ {
-			connect(servers[i].handler, nodes[i].ID(), c.handler, protocol, false)
+			connect(servers[i].handler, nodes[i].ID(), c.handler, protocol)
 		}
 		for i := 0; i < len(servers); i++ {
 			for j := 0; j < testcase.height[i]; j++ {
@@ -87,7 +86,7 @@ func testULCAnnounceThreshold(t *testing.T, protocol int) {
 	}
 }
 
-func connect(server *serverHandler, serverId enode.ID, client *clientHandler, protocol int, noInitAnnounce bool) (*serverPeer, *clientPeer, error) {
+func connect(server *serverHandler, serverId enode.ID, client *clientHandler, protocol int) (*serverPeer, *clientPeer, error) {
 	// Create a message pipe to communicate through
 	app, net := p2p.MsgPipe()
 
@@ -111,22 +110,16 @@ func connect(server *serverHandler, serverId enode.ID, client *clientHandler, pr
 		select {
 		case <-client.closeCh:
 			errc1 <- p2p.DiscQuitting
-		case errc1 <- client.handle(peer1, noInitAnnounce):
+		case errc1 <- client.handle(peer1):
 		}
 	}()
-	// Ensure the connection is established or exits when any error occurs
-	for {
-		select {
-		case err := <-errc1:
-			return nil, nil, fmt.Errorf("failed to establish protocol connection %v", err)
-		case err := <-errc2:
-			return nil, nil, fmt.Errorf("failed to establish protocol connection %v", err)
-		default:
-		}
-		if atomic.LoadUint32(&peer1.serving) == 1 && atomic.LoadUint32(&peer2.serving) == 1 {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
+
+	select {
+	case <-time.After(time.Millisecond * 100):
+	case err := <-errc1:
+		return nil, nil, fmt.Errorf("peerLight handshake error: %v", err)
+	case err := <-errc2:
+		return nil, nil, fmt.Errorf("peerFull handshake error: %v", err)
 	}
 	return peer1, peer2, nil
 }

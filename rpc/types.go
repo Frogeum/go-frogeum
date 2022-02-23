@@ -1,18 +1,18 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package rpc
 
@@ -21,11 +21,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/hexutil"
 )
 
 // API describes the set of methods offered over the RPC interface
@@ -40,10 +39,8 @@ type API struct {
 // a RPC session. Implementations must be go-routine safe since the codec can be called in
 // multiple go-routines concurrently.
 type ServerCodec interface {
-	peerInfo() PeerInfo
 	readBatch() (msgs []*jsonrpcMessage, isBatch bool, err error)
 	close()
-
 	jsonWriter
 }
 
@@ -98,22 +95,6 @@ func (bn *BlockNumber) UnmarshalJSON(data []byte) error {
 	}
 	*bn = BlockNumber(blckNum)
 	return nil
-}
-
-// MarshalText implements encoding.TextMarshaler. It marshals:
-// - "latest", "earliest" or "pending" as strings
-// - other numbers as hex
-func (bn BlockNumber) MarshalText() ([]byte, error) {
-	switch bn {
-	case EarliestBlockNumber:
-		return []byte("earliest"), nil
-	case LatestBlockNumber:
-		return []byte("latest"), nil
-	case PendingBlockNumber:
-		return []byte("pending"), nil
-	default:
-		return hexutil.Uint64(bn).MarshalText()
-	}
 }
 
 func (bn BlockNumber) Int64() int64 {
@@ -188,16 +169,6 @@ func (bnh *BlockNumberOrHash) Number() (BlockNumber, bool) {
 	return BlockNumber(0), false
 }
 
-func (bnh *BlockNumberOrHash) String() string {
-	if bnh.BlockNumber != nil {
-		return strconv.Itoa(int(*bnh.BlockNumber))
-	}
-	if bnh.BlockHash != nil {
-		return bnh.BlockHash.String()
-	}
-	return "nil"
-}
-
 func (bnh *BlockNumberOrHash) Hash() (common.Hash, bool) {
 	if bnh.BlockHash != nil {
 		return *bnh.BlockHash, true
@@ -219,25 +190,4 @@ func BlockNumberOrHashWithHash(hash common.Hash, canonical bool) BlockNumberOrHa
 		BlockHash:        &hash,
 		RequireCanonical: canonical,
 	}
-}
-
-// DecimalOrHex unmarshals a non-negative decimal or hex parameter into a uint64.
-type DecimalOrHex uint64
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (dh *DecimalOrHex) UnmarshalJSON(data []byte) error {
-	input := strings.TrimSpace(string(data))
-	if len(input) >= 2 && input[0] == '"' && input[len(input)-1] == '"' {
-		input = input[1 : len(input)-1]
-	}
-
-	value, err := strconv.ParseUint(input, 10, 64)
-	if err != nil {
-		value, err = hexutil.DecodeUint64(input)
-	}
-	if err != nil {
-		return err
-	}
-	*dh = DecimalOrHex(value)
-	return nil
 }

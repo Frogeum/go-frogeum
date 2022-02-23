@@ -1,18 +1,18 @@
-// Copyright 2018 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2018 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package core
 
@@ -25,17 +25,15 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/accounts/scwallet"
-	"github.com/ethereum/go-ethereum/accounts/usbwallet"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-	"github.com/ethereum/go-ethereum/signer/storage"
+	"github.com/frogeum/go-frogeum/accounts"
+	"github.com/frogeum/go-frogeum/accounts/keystore"
+	"github.com/frogeum/go-frogeum/accounts/scwallet"
+	"github.com/frogeum/go-frogeum/accounts/usbwallet"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/hexutil"
+	"github.com/frogeum/go-frogeum/internal/ethapi"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/signer/storage"
 )
 
 const (
@@ -54,11 +52,11 @@ type ExternalAPI interface {
 	// New request to create a new account
 	New(ctx context.Context) (common.Address, error)
 	// SignTransaction request to sign the specified transaction
-	SignTransaction(ctx context.Context, args apitypes.SendTxArgs, methodSelector *string) (*ethapi.SignTransactionResult, error)
+	SignTransaction(ctx context.Context, args SendTxArgs, methodSelector *string) (*ethapi.SignTransactionResult, error)
 	// SignData - request to sign the given data (plus prefix)
 	SignData(ctx context.Context, contentType string, addr common.MixedcaseAddress, data interface{}) (hexutil.Bytes, error)
 	// SignTypedData - request to sign the given structured data (plus prefix)
-	SignTypedData(ctx context.Context, addr common.MixedcaseAddress, data apitypes.TypedData) (hexutil.Bytes, error)
+	SignTypedData(ctx context.Context, addr common.MixedcaseAddress, data TypedData) (hexutil.Bytes, error)
 	// EcRecover - recover public key from given message and signature
 	EcRecover(ctx context.Context, data hexutil.Bytes, sig hexutil.Bytes) (common.Address, error)
 	// Version info about the APIs
@@ -106,7 +104,7 @@ type Validator interface {
 	// ValidateTransaction does a number of checks on the supplied transaction, and
 	// returns either a list of warnings, or an error (indicating that the transaction
 	// should be immediately rejected).
-	ValidateTransaction(selector *string, tx *apitypes.SendTxArgs) (*apitypes.ValidationMessages, error)
+	ValidateTransaction(selector *string, tx *SendTxArgs) (*ValidationMessages, error)
 }
 
 // SignerAPI defines the actual implementation of ExternalAPI
@@ -189,24 +187,23 @@ func StartClefAccountManager(ksLocation string, nousb, lightKDF bool, scpath str
 
 // MetadataFromContext extracts Metadata from a given context.Context
 func MetadataFromContext(ctx context.Context) Metadata {
-	info := rpc.PeerInfoFromContext(ctx)
-
 	m := Metadata{"NA", "NA", "NA", "", ""} // batman
 
-	if info.Transport != "" {
-		if info.Transport == "http" {
-			m.Scheme = info.HTTP.Version
-		}
-		m.Scheme = info.Transport
+	if v := ctx.Value("remote"); v != nil {
+		m.Remote = v.(string)
 	}
-	if info.RemoteAddr != "" {
-		m.Remote = info.RemoteAddr
+	if v := ctx.Value("scheme"); v != nil {
+		m.Scheme = v.(string)
 	}
-	if info.HTTP.Host != "" {
-		m.Local = info.HTTP.Host
+	if v := ctx.Value("local"); v != nil {
+		m.Local = v.(string)
 	}
-	m.Origin = info.HTTP.Origin
-	m.UserAgent = info.HTTP.UserAgent
+	if v := ctx.Value("Origin"); v != nil {
+		m.Origin = v.(string)
+	}
+	if v := ctx.Value("User-Agent"); v != nil {
+		m.UserAgent = v.(string)
+	}
 	return m
 }
 
@@ -223,24 +220,24 @@ func (m Metadata) String() string {
 type (
 	// SignTxRequest contains info about a Transaction to sign
 	SignTxRequest struct {
-		Transaction apitypes.SendTxArgs       `json:"transaction"`
-		Callinfo    []apitypes.ValidationInfo `json:"call_info"`
-		Meta        Metadata                  `json:"meta"`
+		Transaction SendTxArgs       `json:"transaction"`
+		Callinfo    []ValidationInfo `json:"call_info"`
+		Meta        Metadata         `json:"meta"`
 	}
 	// SignTxResponse result from SignTxRequest
 	SignTxResponse struct {
 		//The UI may make changes to the TX
-		Transaction apitypes.SendTxArgs `json:"transaction"`
-		Approved    bool                `json:"approved"`
+		Transaction SendTxArgs `json:"transaction"`
+		Approved    bool       `json:"approved"`
 	}
 	SignDataRequest struct {
-		ContentType string                    `json:"content_type"`
-		Address     common.MixedcaseAddress   `json:"address"`
-		Rawdata     []byte                    `json:"raw_data"`
-		Messages    []*apitypes.NameValueType `json:"messages"`
-		Callinfo    []apitypes.ValidationInfo `json:"call_info"`
-		Hash        hexutil.Bytes             `json:"hash"`
-		Meta        Metadata                  `json:"meta"`
+		ContentType string                  `json:"content_type"`
+		Address     common.MixedcaseAddress `json:"address"`
+		Rawdata     []byte                  `json:"raw_data"`
+		Messages    []*NameValueType        `json:"messages"`
+		Callinfo    []ValidationInfo        `json:"call_info"`
+		Hash        hexutil.Bytes           `json:"hash"`
+		Meta        Metadata                `json:"meta"`
 	}
 	SignDataResponse struct {
 		Approved bool `json:"approved"`
@@ -459,16 +456,6 @@ func (api *SignerAPI) newAccount() (common.Address, error) {
 // it also returns 'true' if the transaction was modified, to make it possible to configure the signer not to allow
 // UI-modifications to requests
 func logDiff(original *SignTxRequest, new *SignTxResponse) bool {
-	var intPtrModified = func(a, b *hexutil.Big) bool {
-		aBig := (*big.Int)(a)
-		bBig := (*big.Int)(b)
-		if aBig != nil && bBig != nil {
-			return aBig.Cmp(bBig) != 0
-		}
-		// One or both of them are nil
-		return a != b
-	}
-
 	modified := false
 	if f0, f1 := original.Transaction.From, new.Transaction.From; !reflect.DeepEqual(f0, f1) {
 		log.Info("Sender-account changed by UI", "was", f0, "is", f1)
@@ -482,17 +469,9 @@ func logDiff(original *SignTxRequest, new *SignTxResponse) bool {
 		modified = true
 		log.Info("Gas changed by UI", "was", g0, "is", g1)
 	}
-	if a, b := original.Transaction.GasPrice, new.Transaction.GasPrice; intPtrModified(a, b) {
-		log.Info("GasPrice changed by UI", "was", a, "is", b)
+	if g0, g1 := big.Int(original.Transaction.GasPrice), big.Int(new.Transaction.GasPrice); g0.Cmp(&g1) != 0 {
 		modified = true
-	}
-	if a, b := original.Transaction.MaxPriorityFeePerGas, new.Transaction.MaxPriorityFeePerGas; intPtrModified(a, b) {
-		log.Info("maxPriorityFeePerGas changed by UI", "was", a, "is", b)
-		modified = true
-	}
-	if a, b := original.Transaction.MaxFeePerGas, new.Transaction.MaxFeePerGas; intPtrModified(a, b) {
-		log.Info("maxFeePerGas changed by UI", "was", a, "is", b)
-		modified = true
+		log.Info("GasPrice changed by UI", "was", g0, "is", g1)
 	}
 	if v0, v1 := big.Int(original.Transaction.Value), big.Int(new.Transaction.Value); v0.Cmp(&v1) != 0 {
 		modified = true
@@ -540,7 +519,7 @@ func (api *SignerAPI) lookupOrQueryPassword(address common.Address, title, promp
 }
 
 // SignTransaction signs the given Transaction and returns it both as json and rlp-encoded form
-func (api *SignerAPI) SignTransaction(ctx context.Context, args apitypes.SendTxArgs, methodSelector *string) (*ethapi.SignTransactionResult, error) {
+func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, methodSelector *string) (*ethapi.SignTransactionResult, error) {
 	var (
 		err    error
 		result SignTxResponse
@@ -551,7 +530,7 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args apitypes.SendTxA
 	}
 	// If we are in 'rejectMode', then reject rather than show the user warnings
 	if api.rejectMode {
-		if err := msgs.GetWarnings(); err != nil {
+		if err := msgs.getWarnings(); err != nil {
 			return nil, err
 		}
 	}
@@ -588,7 +567,7 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args apitypes.SendTxA
 		return nil, err
 	}
 	// Convert fields into a real transaction
-	var unsignedTx = result.Transaction.ToTransaction()
+	var unsignedTx = result.Transaction.toTransaction()
 	// Get the password for the transaction
 	pw, err := api.lookupOrQueryPassword(acc.Address, "Account password",
 		fmt.Sprintf("Please enter the password for account %s", acc.Address.String()))
@@ -624,7 +603,7 @@ func (api *SignerAPI) SignGnosisSafeTx(ctx context.Context, signerAddress common
 	}
 	// If we are in 'rejectMode', then reject rather than show the user warnings
 	if api.rejectMode {
-		if err := msgs.GetWarnings(); err != nil {
+		if err := msgs.getWarnings(); err != nil {
 			return nil, err
 		}
 	}

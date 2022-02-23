@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package discover
 
@@ -29,11 +29,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/discover/v4wire"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/netutil"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/p2p/discover/v4wire"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/p2p/netutil"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 // Errors
@@ -216,7 +217,7 @@ func (t *UDPv4) Ping(n *enode.Node) error {
 func (t *UDPv4) ping(n *enode.Node) (seq uint64, err error) {
 	rm := t.sendPing(n.ID(), &net.UDPAddr{IP: n.IP(), Port: n.UDP()}, nil)
 	if err = <-rm.errc; err == nil {
-		seq = rm.reply.(*v4wire.Pong).ENRSeq
+		seq = rm.reply.(*v4wire.Pong).ENRSeq()
 	}
 	return seq, err
 }
@@ -247,12 +248,13 @@ func (t *UDPv4) sendPing(toid enode.ID, toaddr *net.UDPAddr, callback func()) *r
 }
 
 func (t *UDPv4) makePing(toaddr *net.UDPAddr) *v4wire.Ping {
+	seq, _ := rlp.EncodeToBytes(t.localNode.Node().Seq())
 	return &v4wire.Ping{
 		Version:    4,
 		From:       t.ourEndpoint(),
 		To:         v4wire.NewEndpoint(toaddr, 0),
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
-		ENRSeq:     t.localNode.Node().Seq(),
+		Rest:       []rlp.RawValue{seq},
 	}
 }
 
@@ -583,7 +585,7 @@ func (t *UDPv4) nodeFromRPC(sender *net.UDPAddr, rn v4wire.Node) (*node, error) 
 		return nil, err
 	}
 	if t.netrestrict != nil && !t.netrestrict.Contains(rn.IP) {
-		return nil, errors.New("not contained in netrestrict list")
+		return nil, errors.New("not contained in netrestrict whitelist")
 	}
 	key, err := v4wire.DecodePubkey(crypto.S256(), rn.ID)
 	if err != nil {
@@ -658,11 +660,12 @@ func (t *UDPv4) handlePing(h *packetHandlerV4, from *net.UDPAddr, fromID enode.I
 	req := h.Packet.(*v4wire.Ping)
 
 	// Reply.
+	seq, _ := rlp.EncodeToBytes(t.localNode.Node().Seq())
 	t.send(from, fromID, &v4wire.Pong{
 		To:         v4wire.NewEndpoint(from, req.From.TCP),
 		ReplyTok:   mac,
 		Expiration: uint64(time.Now().Add(expiration).Unix()),
-		ENRSeq:     t.localNode.Node().Seq(),
+		Rest:       []rlp.RawValue{seq},
 	})
 
 	// Ping back if our last pong on file is too far in the past.

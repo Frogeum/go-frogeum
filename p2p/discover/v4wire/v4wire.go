@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package v4wire implements the Discovery v4 Wire Protocol.
 package v4wire
@@ -27,11 +27,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/enr"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common/math"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/p2p/enr"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 // RPC packet types
@@ -50,8 +50,6 @@ type (
 		Version    uint
 		From, To   Endpoint
 		Expiration uint64
-		ENRSeq     uint64 `rlp:"optional"` // Sequence number of local record, added by EIP-868.
-
 		// Ignore additional fields (for forward compatibility).
 		Rest []rlp.RawValue `rlp:"tail"`
 	}
@@ -64,8 +62,6 @@ type (
 		To         Endpoint
 		ReplyTok   []byte // This contains the hash of the ping packet.
 		Expiration uint64 // Absolute timestamp at which the packet becomes invalid.
-		ENRSeq     uint64 `rlp:"optional"` // Sequence number of local record, added by EIP-868.
-
 		// Ignore additional fields (for forward compatibility).
 		Rest []rlp.RawValue `rlp:"tail"`
 	}
@@ -102,7 +98,7 @@ type (
 	}
 )
 
-// This number is the maximum number of neighbor nodes in a Neighbors packet.
+// This number is the maximum number of neighbor nodes in a Neigbors packet.
 const MaxNeighbors = 12
 
 // This code computes the MaxNeighbors constant value.
@@ -166,11 +162,13 @@ type Packet interface {
 	Kind() byte
 }
 
-func (req *Ping) Name() string { return "PING/v4" }
-func (req *Ping) Kind() byte   { return PingPacket }
+func (req *Ping) Name() string   { return "PING/v4" }
+func (req *Ping) Kind() byte     { return PingPacket }
+func (req *Ping) ENRSeq() uint64 { return seqFromTail(req.Rest) }
 
-func (req *Pong) Name() string { return "PONG/v4" }
-func (req *Pong) Kind() byte   { return PongPacket }
+func (req *Pong) Name() string   { return "PONG/v4" }
+func (req *Pong) Kind() byte     { return PongPacket }
+func (req *Pong) ENRSeq() uint64 { return seqFromTail(req.Rest) }
 
 func (req *Findnode) Name() string { return "FINDNODE/v4" }
 func (req *Findnode) Kind() byte   { return FindnodePacket }
@@ -187,6 +185,15 @@ func (req *ENRResponse) Kind() byte   { return ENRResponsePacket }
 // Expired checks whether the given UNIX time stamp is in the past.
 func Expired(ts uint64) bool {
 	return time.Unix(int64(ts), 0).Before(time.Now())
+}
+
+func seqFromTail(tail []rlp.RawValue) uint64 {
+	if len(tail) == 0 {
+		return 0
+	}
+	var seq uint64
+	rlp.DecodeBytes(tail[0], &seq)
+	return seq
 }
 
 // Encoder/decoder.

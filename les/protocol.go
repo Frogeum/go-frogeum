@@ -1,18 +1,18 @@
-// Copyright 2016 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2016 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package les
 
@@ -23,12 +23,12 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	vfc "github.com/ethereum/go-ethereum/les/vflux/client"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/crypto"
+	vfc "github.com/frogeum/go-frogeum/les/vflux/client"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 // Constants to match up protocol versions and messages
@@ -307,19 +307,19 @@ func (hn *hashOrNumber) EncodeRLP(w io.Writer) error {
 // DecodeRLP is a specialized decoder for hashOrNumber to decode the contents
 // into either a block hash or a block number.
 func (hn *hashOrNumber) DecodeRLP(s *rlp.Stream) error {
-	_, size, err := s.Kind()
-	switch {
-	case err != nil:
-		return err
-	case size == 32:
-		hn.Number = 0
-		return s.Decode(&hn.Hash)
-	case size <= 8:
-		hn.Hash = common.Hash{}
-		return s.Decode(&hn.Number)
-	default:
-		return fmt.Errorf("invalid input size %d for origin", size)
+	_, size, _ := s.Kind()
+	origin, err := s.Raw()
+	if err == nil {
+		switch {
+		case size == 32:
+			err = rlp.DecodeBytes(origin, &hn.Hash)
+		case size <= 8:
+			err = rlp.DecodeBytes(origin, &hn.Number)
+		default:
+			err = fmt.Errorf("invalid input size %d for origin", size)
+		}
 	}
+	return err
 }
 
 // CodeData is the network response packet for a node data retrieval.

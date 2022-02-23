@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package client
 
@@ -23,12 +23,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/les/utils"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common/mclock"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/les/utils"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 const (
@@ -50,7 +50,7 @@ type NodeValueTracker struct {
 	lastTransfer         mclock.AbsTime
 	basket               serverBasket
 	reqCosts             []uint64
-	reqValues            []float64
+	reqValues            *[]float64
 }
 
 // UpdateCosts updates the node value tracker's request cost table
@@ -58,14 +58,14 @@ func (nv *NodeValueTracker) UpdateCosts(reqCosts []uint64) {
 	nv.vt.lock.Lock()
 	defer nv.vt.lock.Unlock()
 
-	nv.updateCosts(reqCosts, nv.vt.refBasket.reqValues, nv.vt.refBasket.reqValueFactor(reqCosts))
+	nv.updateCosts(reqCosts, &nv.vt.refBasket.reqValues, nv.vt.refBasket.reqValueFactor(reqCosts))
 }
 
 // updateCosts updates the request cost table of the server. The request value factor
 // is also updated based on the given cost table and the current reference basket.
 // Note that the contents of the referenced reqValues slice will not change; a new
 // reference is passed if the values are updated by ValueTracker.
-func (nv *NodeValueTracker) updateCosts(reqCosts []uint64, reqValues []float64, rvFactor float64) {
+func (nv *NodeValueTracker) updateCosts(reqCosts []uint64, reqValues *[]float64, rvFactor float64) {
 	nv.lock.Lock()
 	defer nv.lock.Unlock()
 
@@ -112,7 +112,7 @@ func (nv *NodeValueTracker) Served(reqs []ServedRequest, respTime time.Duration)
 	var value float64
 	for _, r := range reqs {
 		nv.basket.add(r.ReqType, r.Amount, nv.reqCosts[r.ReqType]*uint64(r.Amount), expFactor)
-		value += nv.reqValues[r.ReqType] * float64(r.Amount)
+		value += (*nv.reqValues)[r.ReqType] * float64(r.Amount)
 	}
 	nv.rtStats.Add(respTime, value, expFactor)
 }
@@ -356,7 +356,7 @@ func (vt *ValueTracker) Register(id enode.ID) *NodeValueTracker {
 	reqTypeCount := len(vt.refBasket.reqValues)
 	nv.reqCosts = make([]uint64, reqTypeCount)
 	nv.lastTransfer = vt.clock.Now()
-	nv.reqValues = vt.refBasket.reqValues
+	nv.reqValues = &vt.refBasket.reqValues
 	nv.basket.init(reqTypeCount)
 
 	vt.connected[id] = nv
@@ -476,7 +476,7 @@ func (vt *ValueTracker) periodicUpdate() {
 	vt.refBasket.normalize()
 	vt.refBasket.updateReqValues()
 	for _, nv := range vt.connected {
-		nv.updateCosts(nv.reqCosts, vt.refBasket.reqValues, vt.refBasket.reqValueFactor(nv.reqCosts))
+		nv.updateCosts(nv.reqCosts, &vt.refBasket.reqValues, vt.refBasket.reqValueFactor(nv.reqCosts))
 	}
 	vt.saveToDb()
 }

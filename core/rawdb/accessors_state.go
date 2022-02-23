@@ -1,25 +1,25 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package rawdb
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/log"
 )
 
 // ReadPreimage retrieves a single preimage of the provided hash.
@@ -41,14 +41,16 @@ func WritePreimages(db ethdb.KeyValueWriter, preimages map[common.Hash][]byte) {
 
 // ReadCode retrieves the contract code of the provided code hash.
 func ReadCode(db ethdb.KeyValueReader, hash common.Hash) []byte {
-	// Try with the prefixed code scheme first, if not then try with legacy
-	// scheme.
-	data := ReadCodeWithPrefix(db, hash)
+	// Try with the legacy code scheme first, if not then try with current
+	// scheme. Since most of the code will be found with legacy scheme.
+	//
+	// todo(rjl493456442) change the order when we forcibly upgrade the code
+	// scheme with snapshot.
+	data, _ := db.Get(hash[:])
 	if len(data) != 0 {
 		return data
 	}
-	data, _ = db.Get(hash[:])
-	return data
+	return ReadCodeWithPrefix(db, hash)
 }
 
 // ReadCodeWithPrefix retrieves the contract code of the provided code hash.
@@ -57,14 +59,6 @@ func ReadCode(db ethdb.KeyValueReader, hash common.Hash) []byte {
 func ReadCodeWithPrefix(db ethdb.KeyValueReader, hash common.Hash) []byte {
 	data, _ := db.Get(codeKey(hash))
 	return data
-}
-
-// HasCodeWithPrefix checks if the contract code corresponding to the
-// provided code hash is present in the db. This function will only check
-// presence using the prefix-scheme.
-func HasCodeWithPrefix(db ethdb.KeyValueReader, hash common.Hash) bool {
-	ok, _ := db.Has(codeKey(hash))
-	return ok
 }
 
 // WriteCode writes the provided contract code database.
@@ -85,12 +79,6 @@ func DeleteCode(db ethdb.KeyValueWriter, hash common.Hash) {
 func ReadTrieNode(db ethdb.KeyValueReader, hash common.Hash) []byte {
 	data, _ := db.Get(hash.Bytes())
 	return data
-}
-
-// HasTrieNode checks if the trie node with the provided hash is present in db.
-func HasTrieNode(db ethdb.KeyValueReader, hash common.Hash) bool {
-	ok, _ := db.Has(hash.Bytes())
-	return ok
 }
 
 // WriteTrieNode writes the provided trie node database.

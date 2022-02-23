@@ -1,18 +1,18 @@
-// Copyright 2014 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2014 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package types
 
@@ -22,18 +22,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 // The values in those tests are from the Transaction Tests
-// at github.com/ethereum/tests.
+// at github.com/frogeum/tests.
 var (
 	testAddr = common.HexToAddress("b94f5374fce5edbc8e2a8697c15331677e6ebf0b")
 
@@ -259,77 +258,36 @@ func TestRecipientNormal(t *testing.T) {
 	}
 }
 
-func TestTransactionPriceNonceSortLegacy(t *testing.T) {
-	testTransactionPriceNonceSort(t, nil)
-}
-
-func TestTransactionPriceNonceSort1559(t *testing.T) {
-	testTransactionPriceNonceSort(t, big.NewInt(0))
-	testTransactionPriceNonceSort(t, big.NewInt(5))
-	testTransactionPriceNonceSort(t, big.NewInt(50))
-}
-
 // Tests that transactions can be correctly sorted according to their price in
 // decreasing order, but at the same time with increasing nonces when issued by
 // the same account.
-func testTransactionPriceNonceSort(t *testing.T, baseFee *big.Int) {
+func TestTransactionPriceNonceSort(t *testing.T) {
 	// Generate a batch of accounts to start with
 	keys := make([]*ecdsa.PrivateKey, 25)
 	for i := 0; i < len(keys); i++ {
 		keys[i], _ = crypto.GenerateKey()
 	}
-	signer := LatestSignerForChainID(common.Big1)
+	signer := HomesteadSigner{}
 
 	// Generate a batch of transactions with overlapping values, but shifted nonces
 	groups := map[common.Address]Transactions{}
-	expectedCount := 0
 	for start, key := range keys {
 		addr := crypto.PubkeyToAddress(key.PublicKey)
-		count := 25
 		for i := 0; i < 25; i++ {
-			var tx *Transaction
-			gasFeeCap := rand.Intn(50)
-			if baseFee == nil {
-				tx = NewTx(&LegacyTx{
-					Nonce:    uint64(start + i),
-					To:       &common.Address{},
-					Value:    big.NewInt(100),
-					Gas:      100,
-					GasPrice: big.NewInt(int64(gasFeeCap)),
-					Data:     nil,
-				})
-			} else {
-				tx = NewTx(&DynamicFeeTx{
-					Nonce:     uint64(start + i),
-					To:        &common.Address{},
-					Value:     big.NewInt(100),
-					Gas:       100,
-					GasFeeCap: big.NewInt(int64(gasFeeCap)),
-					GasTipCap: big.NewInt(int64(rand.Intn(gasFeeCap + 1))),
-					Data:      nil,
-				})
-				if count == 25 && int64(gasFeeCap) < baseFee.Int64() {
-					count = i
-				}
-			}
-			tx, err := SignTx(tx, signer, key)
-			if err != nil {
-				t.Fatalf("failed to sign tx: %s", err)
-			}
+			tx, _ := SignTx(NewTransaction(uint64(start+i), common.Address{}, big.NewInt(100), 100, big.NewInt(int64(start+i)), nil), signer, key)
 			groups[addr] = append(groups[addr], tx)
 		}
-		expectedCount += count
 	}
 	// Sort the transactions and cross check the nonce ordering
-	txset := NewTransactionsByPriceAndNonce(signer, groups, baseFee)
+	txset := NewTransactionsByPriceAndNonce(signer, groups)
 
 	txs := Transactions{}
 	for tx := txset.Peek(); tx != nil; tx = txset.Peek() {
 		txs = append(txs, tx)
 		txset.Shift()
 	}
-	if len(txs) != expectedCount {
-		t.Errorf("expected %d transactions, found %d", expectedCount, len(txs))
+	if len(txs) != 25*25 {
+		t.Errorf("expected %d transactions, found %d", 25*25, len(txs))
 	}
 	for i, txi := range txs {
 		fromi, _ := Sender(signer, txi)
@@ -345,12 +303,7 @@ func testTransactionPriceNonceSort(t *testing.T, baseFee *big.Int) {
 		if i+1 < len(txs) {
 			next := txs[i+1]
 			fromNext, _ := Sender(signer, next)
-			tip, err := txi.EffectiveGasTip(baseFee)
-			nextTip, nextErr := next.EffectiveGasTip(baseFee)
-			if err != nil || nextErr != nil {
-				t.Errorf("error calculating effective tip")
-			}
-			if fromi != fromNext && tip.Cmp(nextTip) < 0 {
+			if fromi != fromNext && txi.GasPrice().Cmp(next.GasPrice()) < 0 {
 				t.Errorf("invalid gasprice ordering: tx #%d (A=%x P=%v) < tx #%d (A=%x P=%v)", i, fromi[:4], txi.GasPrice(), i+1, fromNext[:4], next.GasPrice())
 			}
 		}
@@ -378,7 +331,7 @@ func TestTransactionTimeSort(t *testing.T) {
 		groups[addr] = append(groups[addr], tx)
 	}
 	// Sort the transactions and cross check the nonce ordering
-	txset := NewTransactionsByPriceAndNonce(signer, groups, nil)
+	txset := NewTransactionsByPriceAndNonce(signer, groups)
 
 	txs := Transactions{}
 	for tx := txset.Peek(); tx != nil; tx = txset.Peek() {

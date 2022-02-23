@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package vm
 
@@ -20,13 +20,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/params"
 	"github.com/holiman/uint256"
 )
 
 var activators = map[int]func(*JumpTable){
-	3529: enable3529,
-	3198: enable3198,
 	2929: enable2929,
 	2200: enable2200,
 	1884: enable1884,
@@ -110,67 +108,39 @@ func enable2200(jt *JumpTable) {
 }
 
 // enable2929 enables "EIP-2929: Gas cost increases for state access opcodes"
-// https://eips.ethereum.org/EIPS/eip-2929
+// https://eips.frogeum.org/EIPS/eip-2929
 func enable2929(jt *JumpTable) {
 	jt[SSTORE].dynamicGas = gasSStoreEIP2929
 
 	jt[SLOAD].constantGas = 0
 	jt[SLOAD].dynamicGas = gasSLoadEIP2929
 
-	jt[EXTCODECOPY].constantGas = params.WarmStorageReadCostEIP2929
+	jt[EXTCODECOPY].constantGas = WarmStorageReadCostEIP2929
 	jt[EXTCODECOPY].dynamicGas = gasExtCodeCopyEIP2929
 
-	jt[EXTCODESIZE].constantGas = params.WarmStorageReadCostEIP2929
+	jt[EXTCODESIZE].constantGas = WarmStorageReadCostEIP2929
 	jt[EXTCODESIZE].dynamicGas = gasEip2929AccountCheck
 
-	jt[EXTCODEHASH].constantGas = params.WarmStorageReadCostEIP2929
+	jt[EXTCODEHASH].constantGas = WarmStorageReadCostEIP2929
 	jt[EXTCODEHASH].dynamicGas = gasEip2929AccountCheck
 
-	jt[BALANCE].constantGas = params.WarmStorageReadCostEIP2929
+	jt[BALANCE].constantGas = WarmStorageReadCostEIP2929
 	jt[BALANCE].dynamicGas = gasEip2929AccountCheck
 
-	jt[CALL].constantGas = params.WarmStorageReadCostEIP2929
+	jt[CALL].constantGas = WarmStorageReadCostEIP2929
 	jt[CALL].dynamicGas = gasCallEIP2929
 
-	jt[CALLCODE].constantGas = params.WarmStorageReadCostEIP2929
+	jt[CALLCODE].constantGas = WarmStorageReadCostEIP2929
 	jt[CALLCODE].dynamicGas = gasCallCodeEIP2929
 
-	jt[STATICCALL].constantGas = params.WarmStorageReadCostEIP2929
+	jt[STATICCALL].constantGas = WarmStorageReadCostEIP2929
 	jt[STATICCALL].dynamicGas = gasStaticCallEIP2929
 
-	jt[DELEGATECALL].constantGas = params.WarmStorageReadCostEIP2929
+	jt[DELEGATECALL].constantGas = WarmStorageReadCostEIP2929
 	jt[DELEGATECALL].dynamicGas = gasDelegateCallEIP2929
 
 	// This was previously part of the dynamic cost, but we're using it as a constantGas
 	// factor here
 	jt[SELFDESTRUCT].constantGas = params.SelfdestructGasEIP150
 	jt[SELFDESTRUCT].dynamicGas = gasSelfdestructEIP2929
-}
-
-// enable3529 enabled "EIP-3529: Reduction in refunds":
-// - Removes refunds for selfdestructs
-// - Reduces refunds for SSTORE
-// - Reduces max refunds to 20% gas
-func enable3529(jt *JumpTable) {
-	jt[SSTORE].dynamicGas = gasSStoreEIP3529
-	jt[SELFDESTRUCT].dynamicGas = gasSelfdestructEIP3529
-}
-
-// enable3198 applies EIP-3198 (BASEFEE Opcode)
-// - Adds an opcode that returns the current block's base fee.
-func enable3198(jt *JumpTable) {
-	// New opcode
-	jt[BASEFEE] = &operation{
-		execute:     opBaseFee,
-		constantGas: GasQuickStep,
-		minStack:    minStack(0, 1),
-		maxStack:    maxStack(0, 1),
-	}
-}
-
-// opBaseFee implements BASEFEE opcode
-func opBaseFee(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byte, error) {
-	baseFee, _ := uint256.FromBig(interpreter.evm.Context.BaseFee)
-	scope.Stack.push(baseFee)
-	return nil, nil
 }

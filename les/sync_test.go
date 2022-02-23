@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package les
 
@@ -22,12 +22,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/accounts/abi/bind"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/light"
+	"github.com/frogeum/go-frogeum/params"
 )
 
 // Test light syncing which will download all headers from genesis.
@@ -116,7 +116,7 @@ func testCheckpointSyncing(t *testing.T, protocol int, syncMode int) {
 	}
 
 	// Create connected peer pair.
-	peer1, peer2, err := newTestPeerPair("peer", protocol, server.handler, client.handler, false)
+	peer1, peer2, err := newTestPeerPair("peer", protocol, server.handler, client.handler)
 	if err != nil {
 		t.Fatalf("Failed to connect testing peers %v", err)
 	}
@@ -196,7 +196,7 @@ func testMissOracleBackend(t *testing.T, hasCheckpoint bool, protocol int) {
 	// that user wants to unlock something which blocks the oracle backend
 	// initialisation. But at the same time syncing starts.
 	//
-	// See https://github.com/ethereum/go-ethereum/issues/20097 for more detail.
+	// See https://github.com/frogeum/go-frogeum/issues/20097 for more detail.
 	//
 	// In this case, client should run light sync or legacy checkpoint sync
 	// if hardcoded checkpoint is configured.
@@ -218,7 +218,7 @@ func testMissOracleBackend(t *testing.T, hasCheckpoint bool, protocol int) {
 		}
 	}
 	// Create connected peer pair.
-	if _, _, err := newTestPeerPair("peer", 2, server.handler, client.handler, false); err != nil {
+	if _, _, err := newTestPeerPair("peer", 2, server.handler, client.handler); err != nil {
 		t.Fatalf("Failed to connect testing peers %v", err)
 	}
 	select {
@@ -291,7 +291,7 @@ func testSyncFromConfiguredCheckpoint(t *testing.T, protocol int) {
 		}
 	}
 	// Create connected peer pair.
-	if _, _, err := newTestPeerPair("peer", 2, server.handler, client.handler, false); err != nil {
+	if _, _, err := newTestPeerPair("peer", 2, server.handler, client.handler); err != nil {
 		t.Fatalf("Failed to connect testing peers %v", err)
 	}
 
@@ -364,7 +364,7 @@ func testSyncAll(t *testing.T, protocol int) {
 		}
 	}
 	// Create connected peer pair.
-	if _, _, err := newTestPeerPair("peer", 2, server.handler, client.handler, false); err != nil {
+	if _, _, err := newTestPeerPair("peer", 2, server.handler, client.handler); err != nil {
 		t.Fatalf("Failed to connect testing peers %v", err)
 	}
 

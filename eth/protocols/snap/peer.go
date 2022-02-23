@@ -1,25 +1,25 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package snap
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/p2p"
 )
 
 // Peer is a collection of relevant information we have about a `snap` peer.
@@ -33,23 +33,13 @@ type Peer struct {
 	logger log.Logger // Contextual logger with the peer id injected
 }
 
-// NewPeer create a wrapper for a network connection and negotiated  protocol
+// newPeer create a wrapper for a network connection and negotiated  protocol
 // version.
-func NewPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter) *Peer {
+func newPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter) *Peer {
 	id := p.ID().String()
 	return &Peer{
 		id:      id,
 		Peer:    p,
-		rw:      rw,
-		version: version,
-		logger:  log.New("peer", id[:8]),
-	}
-}
-
-// NewFakePeer create a fake snap peer without a backing p2p peer, for testing purposes.
-func NewFakePeer(version uint, id string, rw p2p.MsgReadWriter) *Peer {
-	return &Peer{
-		id:      id,
 		rw:      rw,
 		version: version,
 		logger:  log.New("peer", id[:8]),

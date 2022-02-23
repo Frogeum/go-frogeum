@@ -1,18 +1,18 @@
-// Copyright 2014 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2014 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package trie
 
@@ -23,17 +23,17 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/ethdb/memorydb"
 )
 
 func TestIterator(t *testing.T) {
 	trie := newEmpty()
 	vals := []struct{ k, v string }{
 		{"do", "verb"},
-		{"ether", "wookiedoo"},
+		{"popcat", "wookiedoo"},
 		{"horse", "stallion"},
 		{"shaman", "horse"},
 		{"doge", "coin"},
@@ -393,7 +393,7 @@ func testIteratorContinueAfterSeekError(t *testing.T, memonly bool) {
 	for _, val := range testdata1 {
 		ctr.Update([]byte(val.k), []byte(val.v))
 	}
-	root, _, _ := ctr.Commit(nil)
+	root, _ := ctr.Commit(nil)
 	if !memonly {
 		triedb.Commit(root, true, nil)
 	}
@@ -470,10 +470,6 @@ func (l *loggingDb) NewBatch() ethdb.Batch {
 	return l.backend.NewBatch()
 }
 
-func (l *loggingDb) NewBatchWithSize(size int) ethdb.Batch {
-	return l.backend.NewBatchWithSize(size)
-}
-
 func (l *loggingDb) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
 	fmt.Printf("NewIterator\n")
 	return l.backend.NewIterator(prefix, start)
@@ -523,56 +519,5 @@ func TestNodeIteratorLargeTrie(t *testing.T) {
 	// this pr: 5 get operations
 	if have, want := logDb.getCount, uint64(5); have != want {
 		t.Fatalf("Too many lookups during seek, have %d want %d", have, want)
-	}
-}
-
-func TestIteratorNodeBlob(t *testing.T) {
-	var (
-		db      = memorydb.New()
-		triedb  = NewDatabase(db)
-		trie, _ = New(common.Hash{}, triedb)
-	)
-	vals := []struct{ k, v string }{
-		{"do", "verb"},
-		{"ether", "wookiedoo"},
-		{"horse", "stallion"},
-		{"shaman", "horse"},
-		{"doge", "coin"},
-		{"dog", "puppy"},
-		{"somethingveryoddindeedthis is", "myothernodedata"},
-	}
-	all := make(map[string]string)
-	for _, val := range vals {
-		all[val.k] = val.v
-		trie.Update([]byte(val.k), []byte(val.v))
-	}
-	trie.Commit(nil)
-	triedb.Cap(0)
-
-	found := make(map[common.Hash][]byte)
-	it := trie.NodeIterator(nil)
-	for it.Next(true) {
-		if it.Hash() == (common.Hash{}) {
-			continue
-		}
-		found[it.Hash()] = it.NodeBlob()
-	}
-
-	dbIter := db.NewIterator(nil, nil)
-	defer dbIter.Release()
-
-	var count int
-	for dbIter.Next() {
-		got, present := found[common.BytesToHash(dbIter.Key())]
-		if !present {
-			t.Fatalf("Miss trie node %v", dbIter.Key())
-		}
-		if !bytes.Equal(got, dbIter.Value()) {
-			t.Fatalf("Unexpected trie node want %v got %v", dbIter.Value(), got)
-		}
-		count += 1
-	}
-	if count != len(found) {
-		t.Fatal("Find extra trie node via iterator")
 	}
 }

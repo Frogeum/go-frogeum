@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package snapshot
 
@@ -25,17 +25,17 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/fastcache"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/hexutil"
+	"github.com/frogeum/go-frogeum/common/math"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/ethdb/memorydb"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/metrics"
+	"github.com/frogeum/go-frogeum/rlp"
+	"github.com/frogeum/go-frogeum/trie"
 )
 
 var (
@@ -48,13 +48,13 @@ var (
 	// accountCheckRange is the upper limit of the number of accounts involved in
 	// each range check. This is a value estimated based on experience. If this
 	// value is too large, the failure rate of range prove will increase. Otherwise
-	// the value is too small, the efficiency of the state recovery will decrease.
+	// the the value is too small, the efficiency of the state recovery will decrease.
 	accountCheckRange = 128
 
 	// storageCheckRange is the upper limit of the number of storage slots involved
 	// in each range check. This is a value estimated based on experience. If this
 	// value is too large, the failure rate of range prove will increase. Otherwise
-	// the value is too small, the efficiency of the state recovery will decrease.
+	// the the value is too small, the efficiency of the state recovery will decrease.
 	storageCheckRange = 1024
 
 	// errMissingTrie is returned if the target trie is missing while the generation
@@ -436,7 +436,7 @@ func (dl *diskLayer) generateRange(root common.Hash, prefix []byte, kind string,
 		for i, key := range result.keys {
 			snapTrie.Update(key, result.vals[i])
 		}
-		root, _, _ := snapTrie.Commit(nil)
+		root, _ := snapTrie.Commit(nil)
 		snapTrieDb.Commit(root, false, nil)
 	}
 	tr := result.tr
@@ -560,12 +560,6 @@ func (dl *diskLayer) generate(stats *generatorStats) {
 		default:
 		}
 		if batch.ValueSize() > ethdb.IdealBatchSize || abort != nil {
-			if bytes.Compare(currentLocation, dl.genMarker) < 0 {
-				log.Error("Snapshot generator went backwards",
-					"currentLocation", fmt.Sprintf("%x", currentLocation),
-					"genMarker", fmt.Sprintf("%x", dl.genMarker))
-			}
-
 			// Flush out the batch anyway no matter it's empty or not.
 			// It's possible that all the states are recovered and the
 			// generation indeed makes progress.
@@ -640,14 +634,8 @@ func (dl *diskLayer) generate(stats *generatorStats) {
 			stats.storage += common.StorageSize(1 + common.HashLength + dataLen)
 			stats.accounts++
 		}
-		marker := accountHash[:]
-		// If the snap generation goes here after interrupted, genMarker may go backward
-		// when last genMarker is consisted of accountHash and storageHash
-		if accMarker != nil && bytes.Equal(marker, accMarker) && len(dl.genMarker) > common.HashLength {
-			marker = dl.genMarker[:]
-		}
 		// If we've exceeded our batch allowance or termination was requested, flush to disk
-		if err := checkAndFlush(marker); err != nil {
+		if err := checkAndFlush(accountHash[:]); err != nil {
 			return err
 		}
 		// If the iterated account is the contract, create a further loop to

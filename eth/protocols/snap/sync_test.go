@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package snap
 
@@ -27,15 +27,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/core/state"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/light"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/rlp"
+	"github.com/frogeum/go-frogeum/trie"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -263,7 +263,7 @@ func createAccountRequestResponse(t *testPeer, root common.Hash, origin common.H
 	}
 	// Unless we send the entire trie, we need to supply proofs
 	// Actually, we need to supply proofs either way! This seems to be an implementation
-	// quirk in go-ethereum
+	// quirk in go-frogeum
 	proof := light.NewNodeSet()
 	if err := t.accountTrie.Prove(origin[:], 0, proof); err != nil {
 		t.logger.Error("Could not prove inexistence of origin", "origin", origin, "error", err)
@@ -796,6 +796,12 @@ func TestMultiSyncManyUseless(t *testing.T) {
 
 // TestMultiSyncManyUseless contains one good peer, and many which doesn't return anything valuable at all
 func TestMultiSyncManyUselessWithLowTimeout(t *testing.T) {
+	// We're setting the timeout to very low, to increase the chance of the timeout
+	// being triggered. This was previously a cause of panic, when a response
+	// arrived simultaneously as a timeout was triggered.
+	defer func(old time.Duration) { requestTimeout = old }(requestTimeout)
+	requestTimeout = time.Millisecond
+
 	var (
 		once   sync.Once
 		cancel = make(chan struct{})
@@ -832,11 +838,6 @@ func TestMultiSyncManyUselessWithLowTimeout(t *testing.T) {
 		mkSource("noStorage", true, false, true),
 		mkSource("noTrie", true, true, false),
 	)
-	// We're setting the timeout to very low, to increase the chance of the timeout
-	// being triggered. This was previously a cause of panic, when a response
-	// arrived simultaneously as a timeout was triggered.
-	syncer.rates.OverrideTTLLimit = time.Millisecond
-
 	done := checkStall(t, term)
 	if err := syncer.Sync(sourceAccountTrie.Hash(), cancel); err != nil {
 		t.Fatalf("sync failed: %v", err)
@@ -847,6 +848,10 @@ func TestMultiSyncManyUselessWithLowTimeout(t *testing.T) {
 
 // TestMultiSyncManyUnresponsive contains one good peer, and many which doesn't respond at all
 func TestMultiSyncManyUnresponsive(t *testing.T) {
+	// We're setting the timeout to very low, to make the test run a bit faster
+	defer func(old time.Duration) { requestTimeout = old }(requestTimeout)
+	requestTimeout = time.Millisecond
+
 	var (
 		once   sync.Once
 		cancel = make(chan struct{})
@@ -883,9 +888,6 @@ func TestMultiSyncManyUnresponsive(t *testing.T) {
 		mkSource("noStorage", true, false, true),
 		mkSource("noTrie", true, true, false),
 	)
-	// We're setting the timeout to very low, to make the test run a bit faster
-	syncer.rates.OverrideTTLLimit = time.Millisecond
-
 	done := checkStall(t, term)
 	if err := syncer.Sync(sourceAccountTrie.Hash(), cancel); err != nil {
 		t.Fatalf("sync failed: %v", err)
@@ -1349,7 +1351,7 @@ func makeAccountTrieNoStorage(n int) (*trie.Trie, entrySlice) {
 	accTrie, _ := trie.New(common.Hash{}, db)
 	var entries entrySlice
 	for i := uint64(1); i <= uint64(n); i++ {
-		value, _ := rlp.EncodeToBytes(&types.StateAccount{
+		value, _ := rlp.EncodeToBytes(state.Account{
 			Nonce:    i,
 			Balance:  big.NewInt(int64(i)),
 			Root:     emptyRoot,
@@ -1394,7 +1396,7 @@ func makeBoundaryAccountTrie(n int) (*trie.Trie, entrySlice) {
 	}
 	// Fill boundary accounts
 	for i := 0; i < len(boundaries); i++ {
-		value, _ := rlp.EncodeToBytes(&types.StateAccount{
+		value, _ := rlp.EncodeToBytes(state.Account{
 			Nonce:    uint64(0),
 			Balance:  big.NewInt(int64(i)),
 			Root:     emptyRoot,
@@ -1406,7 +1408,7 @@ func makeBoundaryAccountTrie(n int) (*trie.Trie, entrySlice) {
 	}
 	// Fill other accounts if required
 	for i := uint64(1); i <= uint64(n); i++ {
-		value, _ := rlp.EncodeToBytes(&types.StateAccount{
+		value, _ := rlp.EncodeToBytes(state.Account{
 			Nonce:    i,
 			Balance:  big.NewInt(int64(i)),
 			Root:     emptyRoot,
@@ -1442,7 +1444,7 @@ func makeAccountTrieWithStorageWithUniqueStorage(accounts, slots int, code bool)
 		stTrie, stEntries := makeStorageTrieWithSeed(uint64(slots), i, db)
 		stRoot := stTrie.Hash()
 		stTrie.Commit(nil)
-		value, _ := rlp.EncodeToBytes(&types.StateAccount{
+		value, _ := rlp.EncodeToBytes(state.Account{
 			Nonce:    i,
 			Balance:  big.NewInt(int64(i)),
 			Root:     stRoot,
@@ -1489,7 +1491,7 @@ func makeAccountTrieWithStorage(accounts, slots int, code, boundary bool) (*trie
 		if code {
 			codehash = getCodeHash(i)
 		}
-		value, _ := rlp.EncodeToBytes(&types.StateAccount{
+		value, _ := rlp.EncodeToBytes(state.Account{
 			Nonce:    i,
 			Balance:  big.NewInt(int64(i)),
 			Root:     stRoot,

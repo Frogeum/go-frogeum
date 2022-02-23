@@ -1,18 +1,18 @@
-// Copyright 2018 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2018 The go-frogeum Authors
+// This file is part of go-frogeum.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
+// go-frogeum is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// go-frogeum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
@@ -25,12 +25,12 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/core"
+	"github.com/frogeum/go-frogeum/core"
 )
 
-// Tests the go-ethereum to Aleth chainspec conversion for the Stureby testnet.
+// Tests the go-frogeum to Aleth chainspec conversion for the Stureby testnet.
 func TestAlethSturebyConverter(t *testing.T) {
-	blob, err := ioutil.ReadFile("testdata/stureby_geth.json")
+	blob, err := ioutil.ReadFile("testdata/stureby_gfro.json")
 	if err != nil {
 		t.Fatalf("could not read file: %v", err)
 	}
@@ -67,9 +67,9 @@ func TestAlethSturebyConverter(t *testing.T) {
 	}
 }
 
-// Tests the go-ethereum to Parity chainspec conversion for the Stureby testnet.
+// Tests the go-frogeum to Parity chainspec conversion for the Stureby testnet.
 func TestParitySturebyConverter(t *testing.T) {
-	blob, err := ioutil.ReadFile("testdata/stureby_geth.json")
+	blob, err := ioutil.ReadFile("testdata/stureby_gfro.json")
 	if err != nil {
 		t.Fatalf("could not read file: %v", err)
 	}

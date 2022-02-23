@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package ethtest
 
@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/eth/ethconfig"
-	"github.com/ethereum/go-ethereum/internal/utesting"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/frogeum/go-frogeum/eth"
+	"github.com/frogeum/go-frogeum/eth/ethconfig"
+	"github.com/frogeum/go-frogeum/internal/utesting"
+	"github.com/frogeum/go-frogeum/node"
+	"github.com/frogeum/go-frogeum/p2p"
 )
 
 var (
@@ -35,17 +35,17 @@ var (
 )
 
 func TestEthSuite(t *testing.T) {
-	geth, err := runGeth()
+	gfro, err := runGfro()
 	if err != nil {
-		t.Fatalf("could not run geth: %v", err)
+		t.Fatalf("could not run gfro: %v", err)
 	}
-	defer geth.Close()
+	defer gfro.Close()
 
-	suite, err := NewSuite(geth.Server().Self(), fullchainFile, genesisFile)
+	suite, err := NewSuite(gfro.Server().Self(), fullchainFile, genesisFile)
 	if err != nil {
 		t.Fatalf("could not create new test suite: %v", err)
 	}
-	for _, test := range suite.Eth66Tests() {
+	for _, test := range suite.AllEthTests() {
 		t.Run(test.Name, func(t *testing.T) {
 			result := utesting.RunTAP([]utesting.Test{{Name: test.Name, Fn: test.Fn}}, os.Stdout)
 			if result[0].Failed {
@@ -55,29 +55,8 @@ func TestEthSuite(t *testing.T) {
 	}
 }
 
-func TestSnapSuite(t *testing.T) {
-	geth, err := runGeth()
-	if err != nil {
-		t.Fatalf("could not run geth: %v", err)
-	}
-	defer geth.Close()
-
-	suite, err := NewSuite(geth.Server().Self(), fullchainFile, genesisFile)
-	if err != nil {
-		t.Fatalf("could not create new test suite: %v", err)
-	}
-	for _, test := range suite.SnapTests() {
-		t.Run(test.Name, func(t *testing.T) {
-			result := utesting.RunTAP([]utesting.Test{{Name: test.Name, Fn: test.Fn}}, os.Stdout)
-			if result[0].Failed {
-				t.Fatal()
-			}
-		})
-	}
-}
-
-// runGeth creates and starts a geth node
-func runGeth() (*node.Node, error) {
+// runGfro creates and starts a gfro node
+func runGfro() (*node.Node, error) {
 	stack, err := node.New(&node.Config{
 		P2P: p2p.Config{
 			ListenAddr:  "127.0.0.1:0",
@@ -90,7 +69,7 @@ func runGeth() (*node.Node, error) {
 		return nil, err
 	}
 
-	err = setupGeth(stack)
+	err = setupGfro(stack)
 	if err != nil {
 		stack.Close()
 		return nil, err
@@ -102,7 +81,7 @@ func runGeth() (*node.Node, error) {
 	return stack, nil
 }
 
-func setupGeth(stack *node.Node) error {
+func setupGfro(stack *node.Node) error {
 	chain, err := loadChain(halfchainFile, genesisFile)
 	if err != nil {
 		return err

@@ -1,25 +1,25 @@
-// Copyright 2021 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2021 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package snap
 
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/frogeum/go-frogeum/common"
 	"github.com/holiman/uint256"
 )
 
@@ -42,15 +42,15 @@ func newHashRange(start common.Hash, num uint64) *hashRange {
 	step256.SetFromBig(step)
 
 	return &hashRange{
-		current: new(uint256.Int).SetBytes32(start[:]),
+		current: uint256.NewInt().SetBytes32(start[:]),
 		step:    step256,
 	}
 }
 
 // Next pushes the hash range to the next interval.
 func (r *hashRange) Next() bool {
-	next, overflow := new(uint256.Int).AddOverflow(r.current, r.step)
-	if overflow {
+	next := new(uint256.Int)
+	if overflow := next.AddOverflow(r.current, r.step); overflow {
 		return false
 	}
 	r.current = next
@@ -65,17 +65,16 @@ func (r *hashRange) Start() common.Hash {
 // End returns the last hash in the current interval.
 func (r *hashRange) End() common.Hash {
 	// If the end overflows (non divisible range), return a shorter interval
-	next, overflow := new(uint256.Int).AddOverflow(r.current, r.step)
-	if overflow {
+	next := new(uint256.Int)
+	if overflow := next.AddOverflow(r.current, r.step); overflow {
 		return common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	}
-	return next.SubUint64(next, 1).Bytes32()
+	return new(uint256.Int).Sub(next, uint256.NewInt().SetOne()).Bytes32()
 }
 
 // incHash returns the next hash, in lexicographical order (a.k.a plus one)
 func incHash(h common.Hash) common.Hash {
-	var a uint256.Int
-	a.SetBytes32(h[:])
-	a.AddUint64(&a, 1)
+	a := uint256.NewInt().SetBytes32(h[:])
+	a.Add(a, uint256.NewInt().SetOne())
 	return common.Hash(a.Bytes32())
 }

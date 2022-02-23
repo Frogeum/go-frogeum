@@ -1,23 +1,23 @@
-// Copyright 2018 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2018 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package rawdb
 
 import (
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/frogeum/go-frogeum/ethdb"
 )
 
 // table is a wrapper around a database that prefixes each key access with a pre-
@@ -62,12 +62,6 @@ func (t *table) Ancient(kind string, number uint64) ([]byte, error) {
 	return t.db.Ancient(kind, number)
 }
 
-// AncientRange is a noop passthrough that just forwards the request to the underlying
-// database.
-func (t *table) AncientRange(kind string, start, count, maxBytes uint64) ([][]byte, error) {
-	return t.db.AncientRange(kind, start, count, maxBytes)
-}
-
 // Ancients is a noop passthrough that just forwards the request to the underlying
 // database.
 func (t *table) Ancients() (uint64, error) {
@@ -80,13 +74,10 @@ func (t *table) AncientSize(kind string) (uint64, error) {
 	return t.db.AncientSize(kind)
 }
 
-// ModifyAncients runs an ancient write operation on the underlying database.
-func (t *table) ModifyAncients(fn func(ethdb.AncientWriteOp) error) (int64, error) {
-	return t.db.ModifyAncients(fn)
-}
-
-func (t *table) ReadAncients(fn func(reader ethdb.AncientReader) error) (err error) {
-	return t.db.ReadAncients(fn)
+// AppendAncient is a noop passthrough that just forwards the request to the underlying
+// database.
+func (t *table) AppendAncient(number uint64, hash, header, body, receipts, td []byte) error {
+	return t.db.AppendAncient(number, hash, header, body, receipts, td)
 }
 
 // TruncateAncients is a noop passthrough that just forwards the request to the underlying
@@ -140,8 +131,6 @@ func (t *table) Compact(start []byte, limit []byte) error {
 	// If no start was specified, use the table prefix as the first value
 	if start == nil {
 		start = []byte(t.prefix)
-	} else {
-		start = append([]byte(t.prefix), start...)
 	}
 	// If no limit was specified, use the first element not matching the prefix
 	// as the limit
@@ -158,8 +147,6 @@ func (t *table) Compact(start []byte, limit []byte) error {
 				limit = nil
 			}
 		}
-	} else {
-		limit = append([]byte(t.prefix), limit...)
 	}
 	// Range correctly calculated based on table prefix, delegate down
 	return t.db.Compact(start, limit)
@@ -170,11 +157,6 @@ func (t *table) Compact(start []byte, limit []byte) error {
 // pre-configured string.
 func (t *table) NewBatch() ethdb.Batch {
 	return &tableBatch{t.db.NewBatch(), t.prefix}
-}
-
-// NewBatchWithSize creates a write-only database batch with pre-allocated buffer.
-func (t *table) NewBatchWithSize(size int) ethdb.Batch {
-	return &tableBatch{t.db.NewBatchWithSize(size), t.prefix}
 }
 
 // tableBatch is a wrapper around a database batch that prefixes each key access

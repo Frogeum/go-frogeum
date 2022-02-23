@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of go-frogeum.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
+// go-frogeum is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// go-frogeum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/ethereum/go-ethereum/cmd/devp2p/internal/ethtest"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/internal/utesting"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/rlpx"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/cmd/devp2p/internal/ethtest"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/internal/utesting"
+	"github.com/frogeum/go-frogeum/p2p"
+	"github.com/frogeum/go-frogeum/p2p/rlpx"
+	"github.com/frogeum/go-frogeum/rlp"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -36,7 +36,6 @@ var (
 		Subcommands: []cli.Command{
 			rlpxPingCommand,
 			rlpxEthTestCommand,
-			rlpxSnapTestCommand,
 		},
 	}
 	rlpxPingCommand = cli.Command{
@@ -49,16 +48,6 @@ var (
 		Usage:     "Runs tests against a node",
 		ArgsUsage: "<node> <chain.rlp> <genesis.json>",
 		Action:    rlpxEthTest,
-		Flags: []cli.Flag{
-			testPatternFlag,
-			testTAPFlag,
-		},
-	}
-	rlpxSnapTestCommand = cli.Command{
-		Name:      "snap-test",
-		Usage:     "Runs tests against a node",
-		ArgsUsage: "<node> <chain.rlp> <genesis.json>",
-		Action:    rlpxSnapTest,
 		Flags: []cli.Flag{
 			testPatternFlag,
 			testTAPFlag,
@@ -116,16 +105,4 @@ func rlpxEthTest(ctx *cli.Context) error {
 		return runTests(ctx, suite.EthTests())
 	}
 	return runTests(ctx, suite.AllEthTests())
-}
-
-// rlpxSnapTest runs the snap protocol test suite.
-func rlpxSnapTest(ctx *cli.Context) error {
-	if ctx.NArg() < 3 {
-		exit("missing path to chain.rlp as command-line argument")
-	}
-	suite, err := ethtest.NewSuite(getNodeArg(ctx), ctx.Args()[1], ctx.Args()[2])
-	if err != nil {
-		exit(err)
-	}
-	return runTests(ctx, suite.SnapTests())
 }

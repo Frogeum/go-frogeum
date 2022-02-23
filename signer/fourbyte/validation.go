@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package fourbyte
 
@@ -22,15 +22,15 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/signer/core/apitypes"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/signer/core"
 )
 
 // ValidateTransaction does a number of checks on the supplied transaction, and
 // returns either a list of warnings, or an error (indicating that the transaction
 // should be immediately rejected).
-func (db *Database) ValidateTransaction(selector *string, tx *apitypes.SendTxArgs) (*apitypes.ValidationMessages, error) {
-	messages := new(apitypes.ValidationMessages)
+func (db *Database) ValidateTransaction(selector *string, tx *core.SendTxArgs) (*core.ValidationMessages, error) {
+	messages := new(core.ValidationMessages)
 
 	// Prevent accidental erroneous usage of both 'input' and 'data' (show stopper)
 	if tx.Data != nil && tx.Input != nil && !bytes.Equal(*tx.Data, *tx.Input) {
@@ -49,9 +49,9 @@ func (db *Database) ValidateTransaction(selector *string, tx *apitypes.SendTxArg
 	if tx.To == nil {
 		// Contract creation should contain sufficient data to deploy a contract. A
 		// typical error is omitting sender due to some quirk in the javascript call
-		// e.g. https://github.com/ethereum/go-ethereum/issues/16106.
+		// e.g. https://github.com/frogeum/go-frogeum/issues/16106.
 		if len(data) == 0 {
-			// Prevent sending ether into black hole (show stopper)
+			// Prevent sending popcat into black hole (show stopper)
 			if tx.Value.ToInt().Cmp(big.NewInt(0)) > 0 {
 				return nil, errors.New("transaction will create a contract with value but empty code")
 			}
@@ -73,16 +73,6 @@ func (db *Database) ValidateTransaction(selector *string, tx *apitypes.SendTxArg
 	if bytes.Equal(tx.To.Address().Bytes(), common.Address{}.Bytes()) {
 		messages.Crit("Transaction recipient is the zero address")
 	}
-	switch {
-	case tx.GasPrice == nil && tx.MaxFeePerGas == nil:
-		messages.Crit("Neither 'gasPrice' nor 'maxFeePerGas' specified.")
-	case tx.GasPrice == nil && tx.MaxPriorityFeePerGas == nil:
-		messages.Crit("Neither 'gasPrice' nor 'maxPriorityFeePerGas' specified.")
-	case tx.GasPrice != nil && tx.MaxFeePerGas != nil:
-		messages.Crit("Both 'gasPrice' and 'maxFeePerGas' specified.")
-	case tx.GasPrice != nil && tx.MaxPriorityFeePerGas != nil:
-		messages.Crit("Both 'gasPrice' and 'maxPriorityFeePerGas' specified.")
-	}
 	// Semantic fields validated, try to make heads or tails of the call data
 	db.ValidateCallData(selector, data, messages)
 	return messages, nil
@@ -90,7 +80,7 @@ func (db *Database) ValidateTransaction(selector *string, tx *apitypes.SendTxArg
 
 // ValidateCallData checks if the ABI call-data + method selector (if given) can
 // be parsed and seems to match.
-func (db *Database) ValidateCallData(selector *string, data []byte, messages *apitypes.ValidationMessages) {
+func (db *Database) ValidateCallData(selector *string, data []byte, messages *core.ValidationMessages) {
 	// If the data is empty, we have a plain value transfer, nothing more to do
 	if len(data) == 0 {
 		return

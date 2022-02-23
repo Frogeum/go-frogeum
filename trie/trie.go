@@ -1,18 +1,18 @@
-// Copyright 2014 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2014 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package trie implements Merkle Patricia Tries.
 package trie
@@ -23,11 +23,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/log"
 )
 
 var (
@@ -176,10 +174,6 @@ func (t *Trie) TryGetNode(path []byte) ([]byte, int, error) {
 }
 
 func (t *Trie) tryGetNode(origNode node, path []byte, pos int) (item []byte, newnode node, resolved int, err error) {
-	// If non-existent path requested, abort
-	if origNode == nil {
-		return nil, nil, 0, nil
-	}
 	// If we reached the requested path, return the current node
 	if pos >= len(path) {
 		// Although we most probably have the original node expanded, encoding
@@ -199,6 +193,10 @@ func (t *Trie) tryGetNode(origNode node, path []byte, pos int) (item []byte, new
 	}
 	// Path still needs to be traversed, descend into children
 	switch n := (origNode).(type) {
+	case nil:
+		// Non-existent path requested, abort
+		return nil, nil, 0, nil
+
 	case valueNode:
 		// Path prematurely ended, abort
 		return nil, nil, 0, nil
@@ -246,14 +244,6 @@ func (t *Trie) Update(key, value []byte) {
 	if err := t.TryUpdate(key, value); err != nil {
 		log.Error(fmt.Sprintf("Unhandled trie error: %v", err))
 	}
-}
-
-func (t *Trie) TryUpdateAccount(key []byte, acc *types.StateAccount) error {
-	data, err := rlp.EncodeToBytes(acc)
-	if err != nil {
-		return fmt.Errorf("can't encode object at %x: %w", key[:], err)
-	}
-	return t.TryUpdate(key, data)
 }
 
 // TryUpdate associates key with value in the trie. Subsequent calls to
@@ -415,14 +405,6 @@ func (t *Trie) delete(n node, prefix, key []byte) (bool, node, error) {
 		n.flags = t.newFlag()
 		n.Children[key[0]] = nn
 
-		// Because n is a full node, it must've contained at least two children
-		// before the delete operation. If the new child value is non-nil, n still
-		// has at least two children after the deletion, and cannot be reduced to
-		// a short node.
-		if nn != nil {
-			return true, n, nil
-		}
-		// Reduction:
 		// Check how many non-nil entries are left after deleting and
 		// reduce the full node to a short node if only one entry is
 		// left. Since n must've contained at least two children
@@ -514,15 +496,6 @@ func (t *Trie) resolveHash(n hashNode, prefix []byte) (node, error) {
 	return nil, &MissingNodeError{NodeHash: hash, Path: prefix}
 }
 
-func (t *Trie) resolveBlob(n hashNode, prefix []byte) ([]byte, error) {
-	hash := common.BytesToHash(n)
-	blob, _ := t.db.Node(hash)
-	if len(blob) != 0 {
-		return blob, nil
-	}
-	return nil, &MissingNodeError{NodeHash: hash, Path: prefix}
-}
-
 // Hash returns the root hash of the trie. It does not write to the
 // database and can be used even if the trie doesn't have one.
 func (t *Trie) Hash() common.Hash {
@@ -533,12 +506,12 @@ func (t *Trie) Hash() common.Hash {
 
 // Commit writes all nodes to the trie's memory database, tracking the internal
 // and external (for account tries) references.
-func (t *Trie) Commit(onleaf LeafCallback) (common.Hash, int, error) {
+func (t *Trie) Commit(onleaf LeafCallback) (root common.Hash, err error) {
 	if t.db == nil {
 		panic("commit called on trie with nil database")
 	}
 	if t.root == nil {
-		return emptyRoot, 0, nil
+		return emptyRoot, nil
 	}
 	// Derive the hash for all dirty nodes first. We hold the assumption
 	// in the following procedure that all nodes are hashed.
@@ -550,7 +523,7 @@ func (t *Trie) Commit(onleaf LeafCallback) (common.Hash, int, error) {
 	// up goroutines. This can happen e.g. if we load a trie for reading storage
 	// values, but don't write to it.
 	if _, dirty := t.root.cache(); !dirty {
-		return rootHash, 0, nil
+		return rootHash, nil
 	}
 	var wg sync.WaitGroup
 	if onleaf != nil {
@@ -562,7 +535,8 @@ func (t *Trie) Commit(onleaf LeafCallback) (common.Hash, int, error) {
 			h.commitLoop(t.db)
 		}()
 	}
-	newRoot, committed, err := h.Commit(t.root, t.db)
+	var newRoot hashNode
+	newRoot, err = h.Commit(t.root, t.db)
 	if onleaf != nil {
 		// The leafch is created in newCommitter if there was an onleaf callback
 		// provided. The commitLoop only _reads_ from it, and the commit
@@ -572,10 +546,10 @@ func (t *Trie) Commit(onleaf LeafCallback) (common.Hash, int, error) {
 		wg.Wait()
 	}
 	if err != nil {
-		return common.Hash{}, 0, err
+		return common.Hash{}, err
 	}
 	t.root = newRoot
-	return rootHash, committed, nil
+	return rootHash, nil
 }
 
 // hashRoot calculates the root hash of the given trie

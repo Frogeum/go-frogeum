@@ -1,43 +1,31 @@
-// Copyright 2014 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2014 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package state
 
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/hexutil"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/rlp"
+	"github.com/frogeum/go-frogeum/trie"
 )
-
-// DumpConfig is a set of options to control what portions of the statewill be
-// iterated and collected.
-type DumpConfig struct {
-	SkipCode          bool
-	SkipStorage       bool
-	OnlyWithAddresses bool
-	Start             []byte
-	Max               uint64
-}
 
 // DumpCollector interface which the state trie calls during iteration
 type DumpCollector interface {
@@ -51,9 +39,9 @@ type DumpCollector interface {
 type DumpAccount struct {
 	Balance   string                 `json:"balance"`
 	Nonce     uint64                 `json:"nonce"`
-	Root      hexutil.Bytes          `json:"root"`
-	CodeHash  hexutil.Bytes          `json:"codeHash"`
-	Code      hexutil.Bytes          `json:"code,omitempty"`
+	Root      string                 `json:"root"`
+	CodeHash  string                 `json:"codeHash"`
+	Code      string                 `json:"code,omitempty"`
 	Storage   map[common.Hash]string `json:"storage,omitempty"`
 	Address   *common.Address        `json:"address,omitempty"` // Address only present in iterative (line-by-line) mode
 	SecureKey hexutil.Bytes          `json:"key,omitempty"`     // If we don't have address, we can output the key
@@ -123,50 +111,38 @@ func (d iterativeDump) OnRoot(root common.Hash) {
 	}{root})
 }
 
-// DumpToCollector iterates the state according to the given options and inserts
-// the items into a collector for aggregation or serialization.
-func (s *StateDB) DumpToCollector(c DumpCollector, conf *DumpConfig) (nextKey []byte) {
-	// Sanitize the input to allow nil configs
-	if conf == nil {
-		conf = new(DumpConfig)
-	}
-	var (
-		missingPreimages int
-		accounts         uint64
-		start            = time.Now()
-		logged           = time.Now()
-	)
-	log.Info("Trie dumping started", "root", s.trie.Hash())
+func (s *StateDB) DumpToCollector(c DumpCollector, excludeCode, excludeStorage, excludeMissingPreimages bool, start []byte, maxResults int) (nextKey []byte) {
+	missingPreimages := 0
 	c.OnRoot(s.trie.Hash())
 
-	it := trie.NewIterator(s.trie.NodeIterator(conf.Start))
+	var count int
+	it := trie.NewIterator(s.trie.NodeIterator(start))
 	for it.Next() {
-		var data types.StateAccount
+		var data Account
 		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
 			panic(err)
 		}
 		account := DumpAccount{
-			Balance:   data.Balance.String(),
-			Nonce:     data.Nonce,
-			Root:      data.Root[:],
-			CodeHash:  data.CodeHash,
-			SecureKey: it.Key,
+			Balance:  data.Balance.String(),
+			Nonce:    data.Nonce,
+			Root:     common.Bytes2Hex(data.Root[:]),
+			CodeHash: common.Bytes2Hex(data.CodeHash),
 		}
 		addrBytes := s.trie.GetKey(it.Key)
 		if addrBytes == nil {
 			// Preimage missing
 			missingPreimages++
-			if conf.OnlyWithAddresses {
+			if excludeMissingPreimages {
 				continue
 			}
 			account.SecureKey = it.Key
 		}
 		addr := common.BytesToAddress(addrBytes)
 		obj := newObject(s, addr, data)
-		if !conf.SkipCode {
-			account.Code = obj.Code(s.db)
+		if !excludeCode {
+			account.Code = common.Bytes2Hex(obj.Code(s.db))
 		}
-		if !conf.SkipStorage {
+		if !excludeStorage {
 			account.Storage = make(map[common.Hash]string)
 			storageIt := trie.NewIterator(obj.getTrie(s.db).NodeIterator(nil))
 			for storageIt.Next() {
@@ -179,13 +155,8 @@ func (s *StateDB) DumpToCollector(c DumpCollector, conf *DumpConfig) (nextKey []
 			}
 		}
 		c.OnAccount(addr, account)
-		accounts++
-		if time.Since(logged) > 8*time.Second {
-			log.Info("Trie dumping in progress", "at", it.Key, "accounts", accounts,
-				"elapsed", common.PrettyDuration(time.Since(start)))
-			logged = time.Now()
-		}
-		if conf.Max > 0 && accounts >= conf.Max {
+		count++
+		if maxResults > 0 && count >= maxResults {
 			if it.Next() {
 				nextKey = it.Key
 			}
@@ -195,24 +166,22 @@ func (s *StateDB) DumpToCollector(c DumpCollector, conf *DumpConfig) (nextKey []
 	if missingPreimages > 0 {
 		log.Warn("Dump incomplete due to missing preimages", "missing", missingPreimages)
 	}
-	log.Info("Trie dumping complete", "accounts", accounts,
-		"elapsed", common.PrettyDuration(time.Since(start)))
 
 	return nextKey
 }
 
 // RawDump returns the entire state an a single large object
-func (s *StateDB) RawDump(opts *DumpConfig) Dump {
+func (s *StateDB) RawDump(excludeCode, excludeStorage, excludeMissingPreimages bool) Dump {
 	dump := &Dump{
 		Accounts: make(map[common.Address]DumpAccount),
 	}
-	s.DumpToCollector(dump, opts)
+	s.DumpToCollector(dump, excludeCode, excludeStorage, excludeMissingPreimages, nil, 0)
 	return *dump
 }
 
 // Dump returns a JSON string representing the entire state as a single json-object
-func (s *StateDB) Dump(opts *DumpConfig) []byte {
-	dump := s.RawDump(opts)
+func (s *StateDB) Dump(excludeCode, excludeStorage, excludeMissingPreimages bool) []byte {
+	dump := s.RawDump(excludeCode, excludeStorage, excludeMissingPreimages)
 	json, err := json.MarshalIndent(dump, "", "    ")
 	if err != nil {
 		fmt.Println("Dump err", err)
@@ -221,15 +190,15 @@ func (s *StateDB) Dump(opts *DumpConfig) []byte {
 }
 
 // IterativeDump dumps out accounts as json-objects, delimited by linebreaks on stdout
-func (s *StateDB) IterativeDump(opts *DumpConfig, output *json.Encoder) {
-	s.DumpToCollector(iterativeDump{output}, opts)
+func (s *StateDB) IterativeDump(excludeCode, excludeStorage, excludeMissingPreimages bool, output *json.Encoder) {
+	s.DumpToCollector(iterativeDump{output}, excludeCode, excludeStorage, excludeMissingPreimages, nil, 0)
 }
 
 // IteratorDump dumps out a batch of accounts starts with the given start key
-func (s *StateDB) IteratorDump(opts *DumpConfig) IteratorDump {
+func (s *StateDB) IteratorDump(excludeCode, excludeStorage, excludeMissingPreimages bool, start []byte, maxResults int) IteratorDump {
 	iterator := &IteratorDump{
 		Accounts: make(map[common.Address]DumpAccount),
 	}
-	iterator.Next = s.DumpToCollector(iterator, opts)
+	iterator.Next = s.DumpToCollector(iterator, excludeCode, excludeStorage, excludeMissingPreimages, start, maxResults)
 	return *iterator
 }

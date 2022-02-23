@@ -1,18 +1,18 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2017 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package eth
 
@@ -25,22 +25,16 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/core/state"
+	"github.com/frogeum/go-frogeum/crypto"
 )
 
 var dumper = spew.ConfigState{Indent: "    "}
 
 func accountRangeTest(t *testing.T, trie *state.Trie, statedb *state.StateDB, start common.Hash, requestedNum int, expectedNum int) state.IteratorDump {
-	result := statedb.IteratorDump(&state.DumpConfig{
-		SkipCode:          true,
-		SkipStorage:       true,
-		OnlyWithAddresses: false,
-		Start:             start.Bytes(),
-		Max:               uint64(requestedNum),
-	})
+	result := statedb.IteratorDump(true, true, false, start.Bytes(), requestedNum)
 
 	if len(result.Accounts) != expectedNum {
 		t.Fatalf("expected %d results, got %d", expectedNum, len(result.Accounts))
@@ -137,17 +131,12 @@ func TestEmptyAccountRange(t *testing.T) {
 	t.Parallel()
 
 	var (
-		statedb = state.NewDatabase(rawdb.NewMemoryDatabase())
-		st, _   = state.New(common.Hash{}, statedb, nil)
+		statedb  = state.NewDatabase(rawdb.NewMemoryDatabase())
+		state, _ = state.New(common.Hash{}, statedb, nil)
 	)
-	st.Commit(true)
-	st.IntermediateRoot(true)
-	results := st.IteratorDump(&state.DumpConfig{
-		SkipCode:          true,
-		SkipStorage:       true,
-		OnlyWithAddresses: true,
-		Max:               uint64(AccountRangeMaxResults),
-	})
+	state.Commit(true)
+	state.IntermediateRoot(true)
+	results := state.IteratorDump(true, true, true, (common.Hash{}).Bytes(), AccountRangeMaxResults)
 	if bytes.Equal(results.Next, (common.Hash{}).Bytes()) {
 		t.Fatalf("Empty results should not return a second page")
 	}

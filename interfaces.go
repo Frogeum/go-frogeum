@@ -1,29 +1,29 @@
-// Copyright 2016 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2016 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Package ethereum defines interfaces for interacting with Ethereum.
-package ethereum
+// Package frogeum defines interfaces for interacting with Frogeum.
+package frogeum
 
 import (
 	"context"
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core/types"
 )
 
 // NotFound is returned by API methods if the requested item does not exist.
@@ -96,32 +96,13 @@ type ChainStateReader interface {
 }
 
 // SyncProgress gives progress indications when the node is synchronising with
-// the Ethereum network.
+// the Frogeum network.
 type SyncProgress struct {
 	StartingBlock uint64 // Block number where sync began
 	CurrentBlock  uint64 // Current block number where sync is at
 	HighestBlock  uint64 // Highest alleged block number in the chain
-
-	// "fast sync" fields. These used to be sent by geth, but are no longer used
-	// since version v1.10.
-	PulledStates uint64 // Number of state trie entries already downloaded
-	KnownStates  uint64 // Total number of state trie entries known about
-
-	// "snap sync" fields.
-	SyncedAccounts      uint64 // Number of accounts downloaded
-	SyncedAccountBytes  uint64 // Number of account trie bytes persisted to disk
-	SyncedBytecodes     uint64 // Number of bytecodes downloaded
-	SyncedBytecodeBytes uint64 // Number of bytecode bytes downloaded
-	SyncedStorage       uint64 // Number of storage slots downloaded
-	SyncedStorageBytes  uint64 // Number of storage trie bytes persisted to disk
-
-	HealedTrienodes     uint64 // Number of state trie nodes downloaded
-	HealedTrienodeBytes uint64 // Number of state trie bytes persisted to disk
-	HealedBytecodes     uint64 // Number of bytecodes downloaded
-	HealedBytecodeBytes uint64 // Number of bytecodes persisted to disk
-
-	HealingTrienodes uint64 // Number of state trie nodes pending
-	HealingBytecode  uint64 // Number of bytecodes pending
+	PulledStates  uint64 // Number of state trie entries already downloaded
+	KnownStates   uint64 // Total number of state trie entries known about
 }
 
 // ChainSyncReader wraps access to the node's current sync status. If there's no
@@ -132,14 +113,12 @@ type ChainSyncReader interface {
 
 // CallMsg contains parameters for contract calls.
 type CallMsg struct {
-	From      common.Address  // the sender of the 'transaction'
-	To        *common.Address // the destination contract (nil for contract creation)
-	Gas       uint64          // if 0, the call executes with near-infinite gas
-	GasPrice  *big.Int        // wei <-> gas exchange ratio
-	GasFeeCap *big.Int        // EIP-1559 fee cap per gas.
-	GasTipCap *big.Int        // EIP-1559 tip per gas.
-	Value     *big.Int        // amount of wei sent along with the call
-	Data      []byte          // input data, usually an ABI-encoded contract method invocation
+	From     common.Address  // the sender of the 'transaction'
+	To       *common.Address // the destination contract (nil for contract creation)
+	Gas      uint64          // if 0, the call executes with near-infinite gas
+	GasPrice *big.Int        // wei <-> gas exchange ratio
+	Value    *big.Int        // amount of wei sent along with the call
+	Data     []byte          // input data, usually an ABI-encoded contract method invocation
 
 	AccessList types.AccessList // EIP-2930 access list.
 }

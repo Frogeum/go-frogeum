@@ -1,18 +1,18 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package fetcher contains the announcement based header, blocks or transaction synchronisation.
 package fetcher
@@ -22,14 +22,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/prque"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/protocols/eth"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/prque"
+	"github.com/frogeum/go-frogeum/consensus"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/metrics"
+	"github.com/frogeum/go-frogeum/trie"
 )
 
 const (
@@ -75,10 +74,10 @@ type HeaderRetrievalFn func(common.Hash) *types.Header
 type blockRetrievalFn func(common.Hash) *types.Block
 
 // headerRequesterFn is a callback type for sending a header retrieval request.
-type headerRequesterFn func(common.Hash, chan *eth.Response) (*eth.Request, error)
+type headerRequesterFn func(common.Hash) error
 
 // bodyRequesterFn is a callback type for sending a body retrieval request.
-type bodyRequesterFn func([]common.Hash, chan *eth.Response) (*eth.Request, error)
+type bodyRequesterFn func([]common.Hash) error
 
 // headerVerifierFn is a callback type to verify a block's header for fast propagation.
 type headerVerifierFn func(header *types.Header) error
@@ -392,14 +391,13 @@ func (f *BlockFetcher) loop() {
 				blockAnnounceDOSMeter.Mark(1)
 				break
 			}
-			if notification.number == 0 {
-				break
-			}
 			// If we have a valid block number, check that it's potentially useful
-			if dist := int64(notification.number) - int64(f.chainHeight()); dist < -maxUncleDist || dist > maxQueueDist {
-				log.Debug("Peer discarded announcement", "peer", notification.origin, "number", notification.number, "hash", notification.hash, "distance", dist)
-				blockAnnounceDropMeter.Mark(1)
-				break
+			if notification.number > 0 {
+				if dist := int64(notification.number) - int64(f.chainHeight()); dist < -maxUncleDist || dist > maxQueueDist {
+					log.Debug("Peer discarded announcement", "peer", notification.origin, "number", notification.number, "hash", notification.hash, "distance", dist)
+					blockAnnounceDropMeter.Mark(1)
+					break
+				}
 			}
 			// All is well, schedule the announce if block's not yet downloading
 			if _, ok := f.fetching[notification.hash]; ok {
@@ -462,28 +460,15 @@ func (f *BlockFetcher) loop() {
 
 				// Create a closure of the fetch and schedule in on a new thread
 				fetchHeader, hashes := f.fetching[hashes[0]].fetchHeader, hashes
-				go func(peer string) {
+				go func() {
 					if f.fetchingHook != nil {
 						f.fetchingHook(hashes)
 					}
 					for _, hash := range hashes {
 						headerFetchMeter.Mark(1)
-						go func(hash common.Hash) {
-							resCh := make(chan *eth.Response)
-
-							req, err := fetchHeader(hash, resCh)
-							if err != nil {
-								return // Legacy code, yolo
-							}
-							defer req.Close()
-
-							res := <-resCh
-							res.Done <- nil
-
-							f.FilterHeaders(peer, *res.Res.(*eth.BlockHeadersPacket), time.Now().Add(res.Time))
-						}(hash)
+						fetchHeader(hash) // Suboptimal, but protocol doesn't allow batch header retrievals
 					}
-				}(peer)
+				}()
 			}
 			// Schedule the next fetch if blocks are still pending
 			f.rescheduleFetch(fetchTimer)
@@ -511,24 +496,8 @@ func (f *BlockFetcher) loop() {
 				if f.completingHook != nil {
 					f.completingHook(hashes)
 				}
-				fetchBodies := f.completing[hashes[0]].fetchBodies
 				bodyFetchMeter.Mark(int64(len(hashes)))
-
-				go func(peer string, hashes []common.Hash) {
-					resCh := make(chan *eth.Response)
-
-					req, err := fetchBodies(hashes, resCh)
-					if err != nil {
-						return // Legacy code, yolo
-					}
-					defer req.Close()
-
-					res := <-resCh
-					res.Done <- nil
-
-					txs, uncles := res.Res.(*eth.BlockBodiesPacket).Unpack()
-					f.FilterBodies(peer, txs, uncles, time.Now())
-				}(peer, hashes)
+				go f.completing[hashes[0]].fetchBodies(hashes)
 			}
 			// Schedule the next fetch if blocks are still pending
 			f.rescheduleComplete(completeTimer)
@@ -864,17 +833,15 @@ func (f *BlockFetcher) importBlocks(peer string, block *types.Block) {
 // internal state.
 func (f *BlockFetcher) forgetHash(hash common.Hash) {
 	// Remove all pending announces and decrement DOS counters
-	if announceMap, ok := f.announced[hash]; ok {
-		for _, announce := range announceMap {
-			f.announces[announce.origin]--
-			if f.announces[announce.origin] <= 0 {
-				delete(f.announces, announce.origin)
-			}
+	for _, announce := range f.announced[hash] {
+		f.announces[announce.origin]--
+		if f.announces[announce.origin] <= 0 {
+			delete(f.announces, announce.origin)
 		}
-		delete(f.announced, hash)
-		if f.announceChangeHook != nil {
-			f.announceChangeHook(hash, false)
-		}
+	}
+	delete(f.announced, hash)
+	if f.announceChangeHook != nil {
+		f.announceChangeHook(hash, false)
 	}
 	// Remove any pending fetches and decrement the DOS counters
 	if announce := f.fetching[hash]; announce != nil {

@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package server
 
@@ -21,11 +21,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/common/prque"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/nodestate"
+	"github.com/frogeum/go-frogeum/common/mclock"
+	"github.com/frogeum/go-frogeum/common/prque"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/p2p/nodestate"
 )
 
 const (
@@ -128,7 +128,7 @@ func newPriorityPool(ns *nodestate.NodeStateMachine, setup *serverSetup, clock m
 		} else {
 			ns.SetStateSub(node, nodestate.Flags{}, pp.setup.activeFlag.Or(pp.setup.inactiveFlag), 0)
 			if n, _ := pp.ns.GetField(node, pp.setup.queueField).(*ppNodeInfo); n != nil {
-				pp.disconnectNode(n)
+				pp.disconnectedNode(n)
 			}
 			ns.SetFieldSub(node, pp.setup.capacityField, nil)
 			ns.SetFieldSub(node, pp.setup.queueField, nil)
@@ -137,10 +137,10 @@ func newPriorityPool(ns *nodestate.NodeStateMachine, setup *serverSetup, clock m
 	ns.SubscribeState(pp.setup.activeFlag.Or(pp.setup.inactiveFlag), func(node *enode.Node, oldState, newState nodestate.Flags) {
 		if c, _ := pp.ns.GetField(node, pp.setup.queueField).(*ppNodeInfo); c != nil {
 			if oldState.IsEmpty() {
-				pp.connectNode(c)
+				pp.connectedNode(c)
 			}
 			if newState.IsEmpty() {
-				pp.disconnectNode(c)
+				pp.disconnectedNode(c)
 			}
 		}
 	})
@@ -233,14 +233,6 @@ func (pp *priorityPool) Active() (uint64, uint64) {
 	return pp.activeCount, pp.activeCap
 }
 
-// Inactive returns the number of currently inactive nodes
-func (pp *priorityPool) Inactive() int {
-	pp.lock.Lock()
-	defer pp.lock.Unlock()
-
-	return pp.inactiveQueue.Size()
-}
-
 // Limits returns the maximum allowed number and total capacity of active nodes
 func (pp *priorityPool) Limits() (uint64, uint64) {
 	pp.lock.Lock()
@@ -293,9 +285,9 @@ func (pp *priorityPool) inactivePriority(p *ppNodeInfo) int64 {
 	return p.nodePriority.priority(pp.minCap)
 }
 
-// connectNode is called when a new node has been added to the pool (inactiveFlag set)
+// connectedNode is called when a new node has been added to the pool (inactiveFlag set)
 // Note: this function should run inside a NodeStateMachine operation
-func (pp *priorityPool) connectNode(c *ppNodeInfo) {
+func (pp *priorityPool) connectedNode(c *ppNodeInfo) {
 	pp.lock.Lock()
 	pp.activeQueue.Refresh()
 	if c.connected {
@@ -309,10 +301,10 @@ func (pp *priorityPool) connectNode(c *ppNodeInfo) {
 	pp.updateFlags(updates)
 }
 
-// disconnectNode is called when a node has been removed from the pool (both inactiveFlag
+// disconnectedNode is called when a node has been removed from the pool (both inactiveFlag
 // and activeFlag reset)
 // Note: this function should run inside a NodeStateMachine operation
-func (pp *priorityPool) disconnectNode(c *ppNodeInfo) {
+func (pp *priorityPool) disconnectedNode(c *ppNodeInfo) {
 	pp.lock.Lock()
 	pp.activeQueue.Refresh()
 	if !c.connected {

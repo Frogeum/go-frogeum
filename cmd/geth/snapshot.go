@@ -1,39 +1,36 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of go-ethereum.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of go-frogeum.
 //
-// go-ethereum is free software: you can redistribute it and/or modify
+// go-frogeum is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// go-ethereum is distributed in the hope that it will be useful,
+// go-frogeum is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
+// along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
-	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/state/pruner"
-	"github.com/ethereum/go-ethereum/core/state/snapshot"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/cmd/utils"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/core/state"
+	"github.com/frogeum/go-frogeum/core/state/pruner"
+	"github.com/frogeum/go-frogeum/core/state/snapshot"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/rlp"
+	"github.com/frogeum/go-frogeum/trie"
 	cli "gopkg.in/urfave/cli.v1"
 )
 
@@ -54,22 +51,21 @@ var (
 		Subcommands: []cli.Command{
 			{
 				Name:      "prune-state",
-				Usage:     "Prune stale ethereum state data based on the snapshot",
+				Usage:     "Prune stale frogeum state data based on the snapshot",
 				ArgsUsage: "<root>",
 				Action:    utils.MigrateFlags(pruneState),
 				Category:  "MISCELLANEOUS COMMANDS",
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.SepoliaFlag,
+					utils.LongcatFlag,
 					utils.RinkebyFlag,
 					utils.GoerliFlag,
 					utils.CacheTrieJournalFlag,
 					utils.BloomFilterSizeFlag,
 				},
 				Description: `
-geth snapshot prune-state <state-root>
+gfro snapshot prune-state <state-root>
 will prune historical state data with the help of the state snapshot.
 All trie nodes and contract codes that do not belong to the specified
 version state will be deleted from the database. After pruning, only
@@ -79,7 +75,7 @@ The default pruning target is the HEAD-127 state.
 
 WARNING: It's necessary to delete the trie clean cache after the pruning.
 If you specify another directory for the trie clean cache via "--cache.trie.journal"
-during the use of Geth, please also specify it here for correct deletion. Otherwise
+during the use of Gfro, please also specify it here for correct deletion. Otherwise
 the trie clean cache with default directory will be deleted.
 `,
 			},
@@ -92,13 +88,12 @@ the trie clean cache with default directory will be deleted.
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.SepoliaFlag,
+					utils.LongcatFlag,
 					utils.RinkebyFlag,
 					utils.GoerliFlag,
 				},
 				Description: `
-geth snapshot verify-state <state-root>
+gfro snapshot verify-state <state-root>
 will traverse the whole accounts and storages set based on the specified
 snapshot and recalculate the root hash of state for verification.
 In other words, this command does the snapshot to trie conversion.
@@ -113,13 +108,12 @@ In other words, this command does the snapshot to trie conversion.
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.SepoliaFlag,
+					utils.LongcatFlag,
 					utils.RinkebyFlag,
 					utils.GoerliFlag,
 				},
 				Description: `
-geth snapshot traverse-state <state-root>
+gfro snapshot traverse-state <state-root>
 will traverse the whole state from the given state root and will abort if any
 referenced trie node or contract code is missing. This command can be used for
 state integrity verification. The default checking target is the HEAD state.
@@ -136,45 +130,18 @@ It's also usable without snapshot enabled.
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.SepoliaFlag,
+					utils.LongcatFlag,
 					utils.RinkebyFlag,
 					utils.GoerliFlag,
 				},
 				Description: `
-geth snapshot traverse-rawstate <state-root>
+gfro snapshot traverse-rawstate <state-root>
 will traverse the whole state from the given root and will abort if any referenced
 trie node or contract code is missing. This command can be used for state integrity
 verification. The default checking target is the HEAD state. It's basically identical
 to traverse-state, but the check granularity is smaller. 
 
 It's also usable without snapshot enabled.
-`,
-			},
-			{
-				Name:      "dump",
-				Usage:     "Dump a specific block from storage (same as 'geth dump' but using snapshots)",
-				ArgsUsage: "[? <blockHash> | <blockNum>]",
-				Action:    utils.MigrateFlags(dumpState),
-				Category:  "MISCELLANEOUS COMMANDS",
-				Flags: []cli.Flag{
-					utils.DataDirFlag,
-					utils.AncientFlag,
-					utils.RopstenFlag,
-					utils.SepoliaFlag,
-					utils.RinkebyFlag,
-					utils.GoerliFlag,
-					utils.ExcludeCodeFlag,
-					utils.ExcludeStorageFlag,
-					utils.StartKeyFlag,
-					utils.DumpLimitFlag,
-				},
-				Description: `
-This command is semantically equivalent to 'geth dump', but uses the snapshots
-as the backend data source, making this command a lot faster. 
-
-The argument is interpreted as block number or hash. If none is provided, the latest
-block is used.
 `,
 			},
 		},
@@ -238,7 +205,7 @@ func verifyState(ctx *cli.Context) error {
 		}
 	}
 	if err := snaptree.Verify(root); err != nil {
-		log.Error("Failed to verify state", "root", root, "err", err)
+		log.Error("Failed to verfiy state", "root", root, "err", err)
 		return err
 	}
 	log.Info("Verified the state", "root", root)
@@ -293,7 +260,7 @@ func traverseState(ctx *cli.Context) error {
 	accIter := trie.NewIterator(t.NodeIterator(nil))
 	for accIter.Next() {
 		accounts += 1
-		var acc types.StateAccount
+		var acc state.Account
 		if err := rlp.DecodeBytes(accIter.Value, &acc); err != nil {
 			log.Error("Invalid account encountered during traversal", "err", err)
 			return err
@@ -399,7 +366,7 @@ func traverseRawState(ctx *cli.Context) error {
 		// dig into the storage trie further.
 		if accIter.Leaf() {
 			accounts += 1
-			var acc types.StateAccount
+			var acc state.Account
 			if err := rlp.DecodeBytes(accIter.LeafBlob(), &acc); err != nil {
 				log.Error("Invalid account encountered during traversal", "err", err)
 				return errors.New("invalid account")
@@ -418,7 +385,8 @@ func traverseRawState(ctx *cli.Context) error {
 					// Check the present for non-empty hash node(embedded node doesn't
 					// have their own hash).
 					if node != (common.Hash{}) {
-						if !rawdb.HasTrieNode(chaindb, node) {
+						blob := rawdb.ReadTrieNode(chaindb, node)
+						if len(blob) == 0 {
 							log.Error("Missing trie node(storage)", "hash", node)
 							return errors.New("missing storage")
 						}
@@ -461,74 +429,4 @@ func parseRoot(input string) (common.Hash, error) {
 		return h, err
 	}
 	return h, nil
-}
-
-func dumpState(ctx *cli.Context) error {
-	stack, _ := makeConfigNode(ctx)
-	defer stack.Close()
-
-	conf, db, root, err := parseDumpConfig(ctx, stack)
-	if err != nil {
-		return err
-	}
-	snaptree, err := snapshot.New(db, trie.NewDatabase(db), 256, root, false, false, false)
-	if err != nil {
-		return err
-	}
-	accIt, err := snaptree.AccountIterator(root, common.BytesToHash(conf.Start))
-	if err != nil {
-		return err
-	}
-	defer accIt.Release()
-
-	log.Info("Snapshot dumping started", "root", root)
-	var (
-		start    = time.Now()
-		logged   = time.Now()
-		accounts uint64
-	)
-	enc := json.NewEncoder(os.Stdout)
-	enc.Encode(struct {
-		Root common.Hash `json:"root"`
-	}{root})
-	for accIt.Next() {
-		account, err := snapshot.FullAccount(accIt.Account())
-		if err != nil {
-			return err
-		}
-		da := &state.DumpAccount{
-			Balance:   account.Balance.String(),
-			Nonce:     account.Nonce,
-			Root:      account.Root,
-			CodeHash:  account.CodeHash,
-			SecureKey: accIt.Hash().Bytes(),
-		}
-		if !conf.SkipCode && !bytes.Equal(account.CodeHash, emptyCode) {
-			da.Code = rawdb.ReadCode(db, common.BytesToHash(account.CodeHash))
-		}
-		if !conf.SkipStorage {
-			da.Storage = make(map[common.Hash]string)
-
-			stIt, err := snaptree.StorageIterator(root, accIt.Hash(), common.Hash{})
-			if err != nil {
-				return err
-			}
-			for stIt.Next() {
-				da.Storage[stIt.Hash()] = common.Bytes2Hex(stIt.Slot())
-			}
-		}
-		enc.Encode(da)
-		accounts++
-		if time.Since(logged) > 8*time.Second {
-			log.Info("Snapshot dumping in progress", "at", accIt.Hash(), "accounts", accounts,
-				"elapsed", common.PrettyDuration(time.Since(start)))
-			logged = time.Now()
-		}
-		if conf.Max > 0 && accounts >= conf.Max {
-			break
-		}
-	}
-	log.Info("Snapshot dumping complete", "accounts", accounts,
-		"elapsed", common.PrettyDuration(time.Since(start)))
-	return nil
 }

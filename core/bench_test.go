@@ -1,18 +1,18 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package core
 
@@ -23,15 +23,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/math"
+	"github.com/frogeum/go-frogeum/consensus/ethash"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/core/vm"
+	"github.com/frogeum/go-frogeum/crypto"
+	"github.com/frogeum/go-frogeum/ethdb"
+	"github.com/frogeum/go-frogeum/params"
 )
 
 func BenchmarkInsertChain_empty_memdb(b *testing.B) {
@@ -75,7 +75,7 @@ var (
 	// This is the content of the genesis block used by the benchmarks.
 	benchRootKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	benchRootAddr   = crypto.PubkeyToAddress(benchRootKey.PublicKey)
-	benchRootFunds  = math.BigPow(2, 200)
+	benchRootFunds  = math.BigPow(2, 100)
 )
 
 // genValueTx returns a block generator that includes a single
@@ -86,19 +86,7 @@ func genValueTx(nbytes int) func(int, *BlockGen) {
 		toaddr := common.Address{}
 		data := make([]byte, nbytes)
 		gas, _ := IntrinsicGas(data, nil, false, false, false)
-		signer := types.MakeSigner(gen.config, big.NewInt(int64(i)))
-		gasPrice := big.NewInt(0)
-		if gen.header.BaseFee != nil {
-			gasPrice = gen.header.BaseFee
-		}
-		tx, _ := types.SignNewTx(benchRootKey, signer, &types.LegacyTx{
-			Nonce:    gen.TxNonce(benchRootAddr),
-			To:       &toaddr,
-			Value:    big.NewInt(1),
-			Gas:      gas,
-			Data:     data,
-			GasPrice: gasPrice,
-		})
+		tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(benchRootAddr), toaddr, big.NewInt(1), gas, nil, data), types.HomesteadSigner{}, benchRootKey)
 		gen.AddTx(tx)
 	}
 }
@@ -117,43 +105,29 @@ func init() {
 	}
 }
 
-// genTxRing returns a block generator that sends ether in a ring
+// genTxRing returns a block generator that sends popcat in a ring
 // among n accounts. This is creates n entries in the state database
 // and fills the blocks with many small transactions.
 func genTxRing(naccounts int) func(int, *BlockGen) {
 	from := 0
-	availableFunds := new(big.Int).Set(benchRootFunds)
 	return func(i int, gen *BlockGen) {
 		block := gen.PrevBlock(i - 1)
-		gas := block.GasLimit()
-		gasPrice := big.NewInt(0)
-		if gen.header.BaseFee != nil {
-			gasPrice = gen.header.BaseFee
-		}
-		signer := types.MakeSigner(gen.config, big.NewInt(int64(i)))
+		gas := CalcGasLimit(block, block.GasLimit(), block.GasLimit())
 		for {
 			gas -= params.TxGas
 			if gas < params.TxGas {
 				break
 			}
 			to := (from + 1) % naccounts
-			burn := new(big.Int).SetUint64(params.TxGas)
-			burn.Mul(burn, gen.header.BaseFee)
-			availableFunds.Sub(availableFunds, burn)
-			if availableFunds.Cmp(big.NewInt(1)) < 0 {
-				panic("not enough funds")
-			}
-			tx, err := types.SignNewTx(ringKeys[from], signer,
-				&types.LegacyTx{
-					Nonce:    gen.TxNonce(ringAddrs[from]),
-					To:       &ringAddrs[to],
-					Value:    availableFunds,
-					Gas:      params.TxGas,
-					GasPrice: gasPrice,
-				})
-			if err != nil {
-				panic(err)
-			}
+			tx := types.NewTransaction(
+				gen.TxNonce(ringAddrs[from]),
+				ringAddrs[to],
+				benchRootFunds,
+				params.TxGas,
+				nil,
+				nil,
+			)
+			tx, _ = types.SignTx(tx, types.HomesteadSigner{}, ringKeys[from])
 			gen.AddTx(tx)
 			from = to
 		}
@@ -271,7 +245,6 @@ func makeChainForBench(db ethdb.Database, full bool, count uint64) {
 			block := types.NewBlockWithHeader(header)
 			rawdb.WriteBody(db, hash, n, block.Body())
 			rawdb.WriteReceipts(db, hash, n, nil)
-			rawdb.WriteHeadBlockHash(db, hash)
 		}
 	}
 }
@@ -305,8 +278,6 @@ func benchReadChain(b *testing.B, full bool, count uint64) {
 	}
 	makeChainForBench(db, full, count)
 	db.Close()
-	cacheConfig := *defaultCacheConfig
-	cacheConfig.TrieDirtyDisabled = true
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -316,7 +287,7 @@ func benchReadChain(b *testing.B, full bool, count uint64) {
 		if err != nil {
 			b.Fatalf("error opening database at %v: %v", dir, err)
 		}
-		chain, err := NewBlockChain(db, &cacheConfig, params.TestChainConfig, ethash.NewFaker(), vm.Config{}, nil, nil)
+		chain, err := NewBlockChain(db, nil, params.TestChainConfig, ethash.NewFaker(), vm.Config{}, nil, nil)
 		if err != nil {
 			b.Fatalf("error creating chain: %v", err)
 		}

@@ -1,18 +1,18 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package abi
 
@@ -81,7 +81,13 @@ func (arguments Arguments) Unpack(data []byte) ([]interface{}, error) {
 		if len(arguments) != 0 {
 			return nil, fmt.Errorf("abi: attempting to unmarshall an empty string while arguments are expected")
 		}
-		return make([]interface{}, 0), nil
+		// Nothing to unmarshal, return default variables
+		nonIndexedArgs := arguments.NonIndexed()
+		defaultVars := make([]interface{}, len(nonIndexedArgs))
+		for index, arg := range nonIndexedArgs {
+			defaultVars[index] = reflect.New(arg.Type.GetType())
+		}
+		return defaultVars, nil
 	}
 	return arguments.UnpackValues(data)
 }
@@ -131,7 +137,7 @@ func (arguments Arguments) copyAtomic(v interface{}, marshalledValues interface{
 	dst := reflect.ValueOf(v).Elem()
 	src := reflect.ValueOf(marshalledValues)
 
-	if dst.Kind() == reflect.Struct {
+	if dst.Kind() == reflect.Struct && src.Kind() != reflect.Struct {
 		return set(dst.Field(0), src)
 	}
 	return set(dst, src)

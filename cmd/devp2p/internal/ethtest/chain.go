@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package ethtest
 
@@ -26,12 +26,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/forkid"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/forkid"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/params"
+	"github.com/frogeum/go-frogeum/rlp"
 )
 
 type Chain struct {
@@ -40,39 +39,28 @@ type Chain struct {
 	chainConfig *params.ChainConfig
 }
 
+func (c *Chain) WriteTo(writer io.Writer) error {
+	for _, block := range c.blocks {
+		if err := rlp.Encode(writer, block); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Len returns the length of the chain.
 func (c *Chain) Len() int {
 	return len(c.blocks)
 }
 
-// TD calculates the total difficulty of the chain at the
-// chain head.
-func (c *Chain) TD() *big.Int {
+// TD calculates the total difficulty of the chain.
+func (c *Chain) TD(height int) *big.Int { // TODO later on channge scheme so that the height is included in range
 	sum := big.NewInt(0)
-	for _, block := range c.blocks[:c.Len()] {
+	for _, block := range c.blocks[:height] {
 		sum.Add(sum, block.Difficulty())
 	}
 	return sum
-}
-
-// TotalDifficultyAt calculates the total difficulty of the chain
-// at the given block height.
-func (c *Chain) TotalDifficultyAt(height int) *big.Int {
-	sum := big.NewInt(0)
-	if height >= c.Len() {
-		return sum
-	}
-	for _, block := range c.blocks[:height+1] {
-		sum.Add(sum, block.Difficulty())
-	}
-	return sum
-}
-
-func (c *Chain) RootAt(height int) common.Hash {
-	if height < c.Len() {
-		return c.blocks[height].Root()
-	}
-	return common.Hash{}
 }
 
 // ForkID gets the fork id of the chain.

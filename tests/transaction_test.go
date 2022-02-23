@@ -1,25 +1,25 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package tests
 
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/params"
 )
 
 func TestTransaction(t *testing.T) {
@@ -37,17 +37,17 @@ func TestTransaction(t *testing.T) {
 	// calculating the final cozt
 	txt.skipLoad(".*TransactionWithGasPriceOverflow.*")
 
-	// The nonce is too large for uint64. Not a concern, it means geth won't
+	// The nonce is too large for uint64. Not a concern, it means gfro won't
 	// accept transactions at a certain point in the distant future
 	txt.skipLoad("^ttNonce/TransactionWithHighNonce256.json")
 
 	// The value is larger than uint64, which according to the test is invalid.
-	// Geth accepts it, which is not a consensus issue since we use big.Int's
+	// Gfro accepts it, which is not a consensus issue since we use big.Int's
 	// internally to calculate the cost
 	txt.skipLoad("^ttValue/TransactionWithHighValueOverflow.json")
 	txt.walk(t, transactionTestDir, func(t *testing.T, name string, test *TransactionTest) {
 		cfg := params.MainnetChainConfig
-		if err := txt.checkFailure(t, test.Run(cfg)); err != nil {
+		if err := txt.checkFailure(t, name, test.Run(cfg)); err != nil {
 			t.Error(err)
 		}
 	})

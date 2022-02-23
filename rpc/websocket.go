@@ -1,18 +1,18 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package rpc
 
@@ -28,7 +28,7 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/frogeum/go-frogeum/log"
 	"github.com/gorilla/websocket"
 )
 
@@ -37,7 +37,6 @@ const (
 	wsWriteBuffer      = 1024
 	wsPingInterval     = 60 * time.Second
 	wsPingWriteTimeout = 5 * time.Second
-	wsPongTimeout      = 30 * time.Second
 	wsMessageSizeLimit = 15 * 1024 * 1024
 )
 
@@ -60,7 +59,7 @@ func (s *Server) WebsocketHandler(allowedOrigins []string) http.Handler {
 			log.Debug("WebSocket upgrade failed", "err", err)
 			return
 		}
-		codec := newWebsocketCodec(conn, r.Host, r.Header)
+		codec := newWebsocketCodec(conn)
 		s.ServeCodec(codec, 0)
 	})
 }
@@ -97,7 +96,7 @@ func wsHandshakeValidator(allowedOrigins []string) func(*http.Request) bool {
 		if _, ok := req.Header["Origin"]; !ok {
 			return true
 		}
-		// Verify origin against allow list.
+		// Verify origin against whitelist.
 		origin := strings.ToLower(req.Header.Get("Origin"))
 		if allowAllOrigins || originIsAllowed(origins, origin) {
 			return true
@@ -197,7 +196,7 @@ func DialWebsocketWithDialer(ctx context.Context, endpoint, origin string, diale
 			}
 			return nil, hErr
 		}
-		return newWebsocketCodec(conn, endpoint, header), nil
+		return newWebsocketCodec(conn), nil
 	})
 }
 
@@ -235,32 +234,18 @@ func wsClientHeaders(endpoint, origin string) (string, http.Header, error) {
 type websocketCodec struct {
 	*jsonCodec
 	conn *websocket.Conn
-	info PeerInfo
 
 	wg        sync.WaitGroup
 	pingReset chan struct{}
 }
 
-func newWebsocketCodec(conn *websocket.Conn, host string, req http.Header) ServerCodec {
+func newWebsocketCodec(conn *websocket.Conn) ServerCodec {
 	conn.SetReadLimit(wsMessageSizeLimit)
-	conn.SetPongHandler(func(appData string) error {
-		conn.SetReadDeadline(time.Time{})
-		return nil
-	})
 	wc := &websocketCodec{
 		jsonCodec: NewFuncCodec(conn, conn.WriteJSON, conn.ReadJSON).(*jsonCodec),
 		conn:      conn,
 		pingReset: make(chan struct{}, 1),
-		info: PeerInfo{
-			Transport:  "ws",
-			RemoteAddr: conn.RemoteAddr().String(),
-		},
 	}
-	// Fill in connection details.
-	wc.info.HTTP.Host = host
-	wc.info.HTTP.Origin = req.Get("Origin")
-	wc.info.HTTP.UserAgent = req.Get("User-Agent")
-	// Start pinger.
 	wc.wg.Add(1)
 	go wc.pingLoop()
 	return wc
@@ -269,10 +254,6 @@ func newWebsocketCodec(conn *websocket.Conn, host string, req http.Header) Serve
 func (wc *websocketCodec) close() {
 	wc.jsonCodec.close()
 	wc.wg.Wait()
-}
-
-func (wc *websocketCodec) peerInfo() PeerInfo {
-	return wc.info
 }
 
 func (wc *websocketCodec) writeJSON(ctx context.Context, v interface{}) error {
@@ -306,7 +287,6 @@ func (wc *websocketCodec) pingLoop() {
 			wc.jsonCodec.encMu.Lock()
 			wc.conn.SetWriteDeadline(time.Now().Add(wsPingWriteTimeout))
 			wc.conn.WriteMessage(websocket.PingMessage, nil)
-			wc.conn.SetReadDeadline(time.Now().Add(wsPongTimeout))
 			wc.jsonCodec.encMu.Unlock()
 			timer.Reset(wsPingInterval)
 		}

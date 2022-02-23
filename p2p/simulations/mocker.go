@@ -1,18 +1,18 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2017 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package simulations simulates p2p networks.
 // A mocker simulates starting and stopping real nodes in a network.
@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/frogeum/go-frogeum/log"
+	"github.com/frogeum/go-frogeum/p2p/enode"
+	"github.com/frogeum/go-frogeum/p2p/simulations/adapters"
 )
 
 //a map of mocker names to its function
@@ -123,12 +123,20 @@ func probabilistic(net *Network, quit chan struct{}, nodeCount int) {
 		randWait := time.Duration(rand.Intn(5000)+1000) * time.Millisecond
 		rand1 := rand.Intn(nodeCount - 1)
 		rand2 := rand.Intn(nodeCount - 1)
-		if rand1 <= rand2 {
+		if rand1 < rand2 {
 			lowid = rand1
 			highid = rand2
 		} else if rand1 > rand2 {
 			highid = rand1
 			lowid = rand2
+		} else {
+			if rand1 == 0 {
+				rand2 = 9
+			} else if rand1 == 9 {
+				rand1 = 0
+			}
+			lowid = rand1
+			highid = rand2
 		}
 		var steps = highid - lowid
 		wg.Add(steps)

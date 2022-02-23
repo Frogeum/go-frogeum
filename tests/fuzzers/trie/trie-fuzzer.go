@@ -1,18 +1,18 @@
-// Copyright 2019 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2019 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package trie
 
@@ -21,9 +21,9 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/ethdb/memorydb"
+	"github.com/frogeum/go-frogeum/trie"
 )
 
 // randTest performs random trie operations.
@@ -69,7 +69,7 @@ func newDataSource(input []byte) *dataSource {
 		input, bytes.NewReader(input),
 	}
 }
-func (ds *dataSource) readByte() byte {
+func (ds *dataSource) ReadByte() byte {
 	if b, err := ds.reader.ReadByte(); err != nil {
 		return 0
 	} else {
@@ -89,22 +89,22 @@ func Generate(input []byte) randTest {
 	r := newDataSource(input)
 	genKey := func() []byte {
 
-		if len(allKeys) < 2 || r.readByte() < 0x0f {
+		if len(allKeys) < 2 || r.ReadByte() < 0x0f {
 			// new key
-			key := make([]byte, r.readByte()%50)
+			key := make([]byte, r.ReadByte()%50)
 			r.Read(key)
 			allKeys = append(allKeys, key)
 			return key
 		}
 		// use existing key
-		return allKeys[int(r.readByte())%len(allKeys)]
+		return allKeys[int(r.ReadByte())%len(allKeys)]
 	}
 
 	var steps randTest
 
 	for i := 0; !r.Ended(); i++ {
 
-		step := randTestStep{op: int(r.readByte()) % opMax}
+		step := randTestStep{op: int(r.ReadByte()) % opMax}
 		switch step.op {
 		case opUpdate:
 			step.key = genKey()
@@ -162,11 +162,11 @@ func runRandTest(rt randTest) error {
 				rt[i].err = fmt.Errorf("mismatch for key 0x%x, got 0x%x want 0x%x", step.key, v, want)
 			}
 		case opCommit:
-			_, _, rt[i].err = tr.Commit(nil)
+			_, rt[i].err = tr.Commit(nil)
 		case opHash:
 			tr.Hash()
 		case opReset:
-			hash, _, err := tr.Commit(nil)
+			hash, err := tr.Commit(nil)
 			if err != nil {
 				return err
 			}

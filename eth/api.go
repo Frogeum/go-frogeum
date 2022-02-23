@@ -1,18 +1,18 @@
-// Copyright 2015 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2015 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package eth
 
@@ -28,53 +28,52 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/frogeum/go-frogeum/common"
+	"github.com/frogeum/go-frogeum/common/hexutil"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/core/state"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/internal/ethapi"
+	"github.com/frogeum/go-frogeum/rlp"
+	"github.com/frogeum/go-frogeum/rpc"
+	"github.com/frogeum/go-frogeum/trie"
 )
 
-// PublicEthereumAPI provides an API to access Ethereum full node-related
+// PublicFrogeumAPI provides an API to access Frogeum full node-related
 // information.
-type PublicEthereumAPI struct {
-	e *Ethereum
+type PublicFrogeumAPI struct {
+	e *Frogeum
 }
 
-// NewPublicEthereumAPI creates a new Ethereum protocol API for full nodes.
-func NewPublicEthereumAPI(e *Ethereum) *PublicEthereumAPI {
-	return &PublicEthereumAPI{e}
+// NewPublicFrogeumAPI creates a new Frogeum protocol API for full nodes.
+func NewPublicFrogeumAPI(e *Frogeum) *PublicFrogeumAPI {
+	return &PublicFrogeumAPI{e}
 }
 
-// Etherbase is the address that mining rewards will be send to
-func (api *PublicEthereumAPI) Etherbase() (common.Address, error) {
-	return api.e.Etherbase()
+// Popcatbase is the address that mining rewards will be send to
+func (api *PublicFrogeumAPI) Popcatbase() (common.Address, error) {
+	return api.e.Popcatbase()
 }
 
-// Coinbase is the address that mining rewards will be send to (alias for Etherbase)
-func (api *PublicEthereumAPI) Coinbase() (common.Address, error) {
-	return api.Etherbase()
+// Coinbase is the address that mining rewards will be send to (alias for Popcatbase)
+func (api *PublicFrogeumAPI) Coinbase() (common.Address, error) {
+	return api.Popcatbase()
 }
 
 // Hashrate returns the POW hashrate
-func (api *PublicEthereumAPI) Hashrate() hexutil.Uint64 {
+func (api *PublicFrogeumAPI) Hashrate() hexutil.Uint64 {
 	return hexutil.Uint64(api.e.Miner().Hashrate())
 }
 
 // PublicMinerAPI provides an API to control the miner.
 // It offers only methods that operate on data that pose no security risk when it is publicly accessible.
 type PublicMinerAPI struct {
-	e *Ethereum
+	e *Frogeum
 }
 
 // NewPublicMinerAPI create a new PublicMinerAPI instance.
-func NewPublicMinerAPI(e *Ethereum) *PublicMinerAPI {
+func NewPublicMinerAPI(e *Frogeum) *PublicMinerAPI {
 	return &PublicMinerAPI{e}
 }
 
@@ -86,11 +85,11 @@ func (api *PublicMinerAPI) Mining() bool {
 // PrivateMinerAPI provides private RPC methods to control the miner.
 // These methods can be abused by external users and must be considered insecure for use by untrusted users.
 type PrivateMinerAPI struct {
-	e *Ethereum
+	e *Frogeum
 }
 
 // NewPrivateMinerAPI create a new RPC service which controls the miner of this node.
-func NewPrivateMinerAPI(e *Ethereum) *PrivateMinerAPI {
+func NewPrivateMinerAPI(e *Frogeum) *PrivateMinerAPI {
 	return &PrivateMinerAPI{e: e}
 }
 
@@ -130,15 +129,9 @@ func (api *PrivateMinerAPI) SetGasPrice(gasPrice hexutil.Big) bool {
 	return true
 }
 
-// SetGasLimit sets the gaslimit to target towards during mining.
-func (api *PrivateMinerAPI) SetGasLimit(gasLimit hexutil.Uint64) bool {
-	api.e.Miner().SetGasCeil(uint64(gasLimit))
-	return true
-}
-
-// SetEtherbase sets the etherbase of the miner
-func (api *PrivateMinerAPI) SetEtherbase(etherbase common.Address) bool {
-	api.e.SetEtherbase(etherbase)
+// SetPopcatbase sets the popcatbase of the miner
+func (api *PrivateMinerAPI) SetPopcatbase(popcatbase common.Address) bool {
+	api.e.SetPopcatbase(popcatbase)
 	return true
 }
 
@@ -147,15 +140,15 @@ func (api *PrivateMinerAPI) SetRecommitInterval(interval int) {
 	api.e.Miner().SetRecommitInterval(time.Duration(interval) * time.Millisecond)
 }
 
-// PrivateAdminAPI is the collection of Ethereum full node-related APIs
+// PrivateAdminAPI is the collection of Frogeum full node-related APIs
 // exposed over the private admin endpoint.
 type PrivateAdminAPI struct {
-	eth *Ethereum
+	eth *Frogeum
 }
 
 // NewPrivateAdminAPI creates a new API definition for the full node private
-// admin methods of the Ethereum service.
-func NewPrivateAdminAPI(eth *Ethereum) *PrivateAdminAPI {
+// admin methods of the Frogeum service.
+func NewPrivateAdminAPI(eth *Frogeum) *PrivateAdminAPI {
 	return &PrivateAdminAPI{eth: eth}
 }
 
@@ -170,7 +163,7 @@ func (api *PrivateAdminAPI) ExportChain(file string, first *uint64, last *uint64
 		last = &head
 	}
 	if _, err := os.Stat(file); err == nil {
-		// File already exists. Allowing overwrite could be a DoS vector,
+		// File already exists. Allowing overwrite could be a DoS vecotor,
 		// since the 'file' may point to arbitrary paths on the drive
 		return false, errors.New("location would overwrite an existing file")
 	}
@@ -257,30 +250,26 @@ func (api *PrivateAdminAPI) ImportChain(file string) (bool, error) {
 	return true, nil
 }
 
-// PublicDebugAPI is the collection of Ethereum full node APIs exposed
+// PublicDebugAPI is the collection of Frogeum full node APIs exposed
 // over the public debugging endpoint.
 type PublicDebugAPI struct {
-	eth *Ethereum
+	eth *Frogeum
 }
 
 // NewPublicDebugAPI creates a new API definition for the full node-
-// related public debug methods of the Ethereum service.
-func NewPublicDebugAPI(eth *Ethereum) *PublicDebugAPI {
+// related public debug methods of the Frogeum service.
+func NewPublicDebugAPI(eth *Frogeum) *PublicDebugAPI {
 	return &PublicDebugAPI{eth: eth}
 }
 
 // DumpBlock retrieves the entire state of the database at a given block.
 func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error) {
-	opts := &state.DumpConfig{
-		OnlyWithAddresses: true,
-		Max:               AccountRangeMaxResults, // Sanity limit over RPC
-	}
 	if blockNr == rpc.PendingBlockNumber {
 		// If we're dumping the pending state, we need to request
 		// both the pending block as well as the pending state from
 		// the miner and operate on those
 		_, stateDb := api.eth.miner.Pending()
-		return stateDb.RawDump(opts), nil
+		return stateDb.RawDump(false, false, true), nil
 	}
 	var block *types.Block
 	if blockNr == rpc.LatestBlockNumber {
@@ -295,18 +284,18 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error
 	if err != nil {
 		return state.Dump{}, err
 	}
-	return stateDb.RawDump(opts), nil
+	return stateDb.RawDump(false, false, true), nil
 }
 
-// PrivateDebugAPI is the collection of Ethereum full node APIs exposed over
+// PrivateDebugAPI is the collection of Frogeum full node APIs exposed over
 // the private debugging endpoint.
 type PrivateDebugAPI struct {
-	eth *Ethereum
+	eth *Frogeum
 }
 
 // NewPrivateDebugAPI creates a new API definition for the full node-related
-// private debug methods of the Ethereum service.
-func NewPrivateDebugAPI(eth *Ethereum) *PrivateDebugAPI {
+// private debug methods of the Frogeum service.
+func NewPrivateDebugAPI(eth *Frogeum) *PrivateDebugAPI {
 	return &PrivateDebugAPI{eth: eth}
 }
 
@@ -343,7 +332,7 @@ func (api *PrivateDebugAPI) GetBadBlocks(ctx context.Context) ([]*BadBlockArgs, 
 		} else {
 			blockRlp = fmt.Sprintf("0x%x", rlpBytes)
 		}
-		if blockJSON, err = ethapi.RPCMarshalBlock(block, true, true, api.eth.APIBackend.ChainConfig()); err != nil {
+		if blockJSON, err = ethapi.RPCMarshalBlock(block, true, true); err != nil {
 			blockJSON = map[string]interface{}{"error": err.Error()}
 		}
 		results = append(results, &BadBlockArgs{
@@ -397,17 +386,10 @@ func (api *PublicDebugAPI) AccountRange(blockNrOrHash rpc.BlockNumberOrHash, sta
 		return state.IteratorDump{}, errors.New("either block number or block hash must be specified")
 	}
 
-	opts := &state.DumpConfig{
-		SkipCode:          nocode,
-		SkipStorage:       nostorage,
-		OnlyWithAddresses: !incompletes,
-		Start:             start,
-		Max:               uint64(maxResults),
-	}
 	if maxResults > AccountRangeMaxResults || maxResults <= 0 {
-		opts.Max = AccountRangeMaxResults
+		maxResults = AccountRangeMaxResults
 	}
-	return stateDb.IteratorDump(opts), nil
+	return stateDb.IteratorDump(nocode, nostorage, incompletes, start, maxResults), nil
 }
 
 // StorageRangeResult is the result of a debug_storageRangeAt API call.
@@ -545,65 +527,4 @@ func (api *PrivateDebugAPI) getModifiedAccounts(startBlock, endBlock *types.Bloc
 		dirty = append(dirty, common.BytesToAddress(key))
 	}
 	return dirty, nil
-}
-
-// GetAccessibleState returns the first number where the node has accessible
-// state on disk. Note this being the post-state of that block and the pre-state
-// of the next block.
-// The (from, to) parameters are the sequence of blocks to search, which can go
-// either forwards or backwards
-func (api *PrivateDebugAPI) GetAccessibleState(from, to rpc.BlockNumber) (uint64, error) {
-	db := api.eth.ChainDb()
-	var pivot uint64
-	if p := rawdb.ReadLastPivotNumber(db); p != nil {
-		pivot = *p
-		log.Info("Found fast-sync pivot marker", "number", pivot)
-	}
-	var resolveNum = func(num rpc.BlockNumber) (uint64, error) {
-		// We don't have state for pending (-2), so treat it as latest
-		if num.Int64() < 0 {
-			block := api.eth.blockchain.CurrentBlock()
-			if block == nil {
-				return 0, fmt.Errorf("current block missing")
-			}
-			return block.NumberU64(), nil
-		}
-		return uint64(num.Int64()), nil
-	}
-	var (
-		start   uint64
-		end     uint64
-		delta   = int64(1)
-		lastLog time.Time
-		err     error
-	)
-	if start, err = resolveNum(from); err != nil {
-		return 0, err
-	}
-	if end, err = resolveNum(to); err != nil {
-		return 0, err
-	}
-	if start == end {
-		return 0, fmt.Errorf("from and to needs to be different")
-	}
-	if start > end {
-		delta = -1
-	}
-	for i := int64(start); i != int64(end); i += delta {
-		if time.Since(lastLog) > 8*time.Second {
-			log.Info("Finding roots", "from", start, "to", end, "at", i)
-			lastLog = time.Now()
-		}
-		if i < int64(pivot) {
-			continue
-		}
-		h := api.eth.BlockChain().GetHeaderByNumber(uint64(i))
-		if h == nil {
-			return 0, fmt.Errorf("missing header %d", i)
-		}
-		if ok, _ := api.eth.ChainDb().Has(h.Root[:]); ok {
-			return uint64(i), nil
-		}
-	}
-	return 0, fmt.Errorf("No state found")
 }

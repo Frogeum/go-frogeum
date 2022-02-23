@@ -1,18 +1,18 @@
-// Copyright 2020 The go-ethereum Authors
-// This file is part of the go-ethereum library.
+// Copyright 2020 The go-frogeum Authors
+// This file is part of the go-frogeum library.
 //
-// The go-ethereum library is free software: you can redistribute it and/or modify
+// The go-frogeum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-ethereum library is distributed in the hope that it will be useful,
+// The go-frogeum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-frogeum library. If not, see <http://www.gnu.org/licenses/>.
 
 package les
 
@@ -21,12 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/frogeum/go-frogeum/consensus/ethash"
+	"github.com/frogeum/go-frogeum/core"
+	"github.com/frogeum/go-frogeum/core/rawdb"
+	"github.com/frogeum/go-frogeum/core/types"
+	"github.com/frogeum/go-frogeum/p2p/enode"
 )
 
 // verifyImportEvent verifies that one single event arrive on an import channel.
@@ -75,12 +74,14 @@ func testSequentialAnnouncements(t *testing.T, protocol int) {
 	s, c, teardown := newClientServerEnv(t, netconfig)
 	defer teardown()
 
-	// Create connected peer pair, the initial signal from LES server
-	// is discarded to prevent syncing.
-	p1, _, err := newTestPeerPair("peer", protocol, s.handler, c.handler, true)
+	// Create connected peer pair.
+	c.handler.fetcher.noAnnounce = true // Ignore the first announce from peer which can trigger a resync.
+	p1, _, err := newTestPeerPair("peer", protocol, s.handler, c.handler)
 	if err != nil {
 		t.Fatalf("Failed to create peer pair %v", err)
 	}
+	c.handler.fetcher.noAnnounce = false
+
 	importCh := make(chan interface{})
 	c.handler.fetcher.newHeadHook = func(header *types.Header) {
 		importCh <- header
@@ -113,12 +114,14 @@ func testGappedAnnouncements(t *testing.T, protocol int) {
 	s, c, teardown := newClientServerEnv(t, netconfig)
 	defer teardown()
 
-	// Create connected peer pair, the initial signal from LES server
-	// is discarded to prevent syncing.
-	peer, _, err := newTestPeerPair("peer", protocol, s.handler, c.handler, true)
+	// Create connected peer pair.
+	c.handler.fetcher.noAnnounce = true // Ignore the first announce from peer which can trigger a resync.
+	peer, _, err := newTestPeerPair("peer", protocol, s.handler, c.handler)
 	if err != nil {
 		t.Fatalf("Failed to create peer pair %v", err)
 	}
+	c.handler.fetcher.noAnnounce = false
+
 	done := make(chan *types.Header, 1)
 	c.handler.fetcher.newHeadHook = func(header *types.Header) { done <- header }
 
@@ -138,11 +141,29 @@ func testGappedAnnouncements(t *testing.T, protocol int) {
 	verifyChainHeight(t, c.handler.fetcher, 4)
 
 	// Send a reorged announcement
+	var newAnno = make(chan struct{}, 1)
+	c.handler.fetcher.noAnnounce = true
+	c.handler.fetcher.newAnnounce = func(*serverPeer, *announceData) {
+		newAnno <- struct{}{}
+	}
 	blocks, _ := core.GenerateChain(rawdb.ReadChainConfig(s.db, s.backend.Blockchain().Genesis().Hash()), s.backend.Blockchain().GetBlockByNumber(3),
 		ethash.NewFaker(), s.db, 2, func(i int, gen *core.BlockGen) {
 			gen.OffsetTime(-9) // higher block difficulty
 		})
 	s.backend.Blockchain().InsertChain(blocks)
+	<-newAnno
+	c.handler.fetcher.noAnnounce = false
+	c.handler.fetcher.newAnnounce = nil
+
+	latest = blocks[len(blocks)-1].Header()
+	hash, number = latest.Hash(), latest.Number.Uint64()
+	td = rawdb.ReadTd(s.db, hash, number)
+
+	announce = announceData{hash, number, td, 1, nil}
+	if peer.cpeer.announceType == announceTypeSigned {
+		announce.sign(s.handler.server.privateKey)
+	}
+	peer.cpeer.sendAnnounce(announce)
 
 	<-done // Wait syncing
 	verifyChainHeight(t, c.handler.fetcher, 5)
@@ -185,15 +206,20 @@ func testTrustedAnnouncement(t *testing.T, protocol int) {
 			teardowns[i]()
 		}
 	}()
+
+	c.handler.fetcher.noAnnounce = true // Ignore the first announce from peer which can trigger a resync.
+
 	// Connect all server instances.
 	for i := 0; i < len(servers); i++ {
-		sp, cp, err := connect(servers[i].handler, nodes[i].ID(), c.handler, protocol, true)
+		sp, cp, err := connect(servers[i].handler, nodes[i].ID(), c.handler, protocol)
 		if err != nil {
 			t.Fatalf("connect server and client failed, err %s", err)
 		}
 		cpeers = append(cpeers, cp)
 		speers = append(speers, sp)
 	}
+	c.handler.fetcher.noAnnounce = false
+
 	newHead := make(chan *types.Header, 1)
 	c.handler.fetcher.newHeadHook = func(header *types.Header) { newHead <- header }
 
@@ -236,19 +262,21 @@ func testInvalidAnnounces(t *testing.T, protocol int) {
 	s, c, teardown := newClientServerEnv(t, netconfig)
 	defer teardown()
 
-	// Create connected peer pair, the initial signal from LES server
-	// is discarded to prevent syncing.
-	peer, _, err := newTestPeerPair("peer", lpv3, s.handler, c.handler, true)
+	// Create connected peer pair.
+	c.handler.fetcher.noAnnounce = true // Ignore the first announce from peer which can trigger a resync.
+	peer, _, err := newTestPeerPair("peer", lpv3, s.handler, c.handler)
 	if err != nil {
 		t.Fatalf("Failed to create peer pair %v", err)
 	}
+	c.handler.fetcher.noAnnounce = false
+
 	done := make(chan *types.Header, 1)
 	c.handler.fetcher.newHeadHook = func(header *types.Header) { done <- header }
 
 	// Prepare announcement by latest header.
 	headerOne := s.backend.Blockchain().GetHeaderByNumber(1)
 	hash, number := headerOne.Hash(), headerOne.Number.Uint64()
-	td := big.NewInt(params.GenesisDifficulty.Int64() + 200) // bad td
+	td := big.NewInt(200) // bad td
 
 	// Sign the announcement if necessary.
 	announce := announceData{hash, number, td, 0, nil}
