@@ -35,7 +35,7 @@ const (
 	// signature and no receive function is specified.
 	Fallback
 	// Receive represents the receive function.
-	// This function is executed on plain Popcat transfers.
+	// This function is executed on plain Frog transfers.
 	Receive
 	// Function represents a normal function.
 	Function
@@ -161,7 +161,7 @@ func (method Method) IsConstant() bool {
 }
 
 // IsPayable returns the indicator whether the method can process
-// plain popcat transfers.
+// plain frog transfers.
 func (method Method) IsPayable() bool {
 	return method.StateMutability == "payable" || method.Payable
 }

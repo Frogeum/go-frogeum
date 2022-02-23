@@ -85,16 +85,16 @@ type Frogeum struct {
 
 	APIBackend *EthAPIBackend
 
-	miner      *miner.Miner
-	gasPrice   *big.Int
-	popcatbase common.Address
+	miner    *miner.Miner
+	gasPrice *big.Int
+	frogbase common.Address
 
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
 
 	p2pServer *p2p.Server
 
-	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and popcatbase)
+	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and frogbase)
 }
 
 // New creates a new Frogeum object (including the
@@ -149,7 +149,7 @@ func New(stack *node.Node, config *ethconfig.Config) (*Frogeum, error) {
 		closeBloomHandler: make(chan struct{}),
 		networkID:         config.NetworkId,
 		gasPrice:          config.Miner.GasPrice,
-		popcatbase:        config.Miner.Popcatbase,
+		frogbase:          config.Miner.Frogbase,
 		bloomRequests:     make(chan chan *bloombits.Retrieval),
 		bloomIndexer:      core.NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		p2pServer:         stack.Server(),
@@ -352,33 +352,33 @@ func (s *Frogeum) ResetWithGenesisBlock(gb *types.Block) {
 	s.blockchain.ResetWithGenesisBlock(gb)
 }
 
-func (s *Frogeum) Popcatbase() (eb common.Address, err error) {
+func (s *Frogeum) Frogbase() (eb common.Address, err error) {
 	s.lock.RLock()
-	popcatbase := s.popcatbase
+	frogbase := s.frogbase
 	s.lock.RUnlock()
 
-	if popcatbase != (common.Address{}) {
-		return popcatbase, nil
+	if frogbase != (common.Address{}) {
+		return frogbase, nil
 	}
 	if wallets := s.AccountManager().Wallets(); len(wallets) > 0 {
 		if accounts := wallets[0].Accounts(); len(accounts) > 0 {
-			popcatbase := accounts[0].Address
+			frogbase := accounts[0].Address
 
 			s.lock.Lock()
-			s.popcatbase = popcatbase
+			s.frogbase = frogbase
 			s.lock.Unlock()
 
-			log.Info("Popcatbase automatically configured", "address", popcatbase)
-			return popcatbase, nil
+			log.Info("Frogbase automatically configured", "address", frogbase)
+			return frogbase, nil
 		}
 	}
-	return common.Address{}, fmt.Errorf("popcatbase must be explicitly specified")
+	return common.Address{}, fmt.Errorf("frogbase must be explicitly specified")
 }
 
 // isLocalBlock checks whether the specified block is mined
 // by local miner accounts.
 //
-// We regard two types of accounts as local miner account: popcatbase
+// We regard two types of accounts as local miner account: frogbase
 // and accounts specified via `txpool.locals` flag.
 func (s *Frogeum) isLocalBlock(block *types.Block) bool {
 	author, err := s.engine.Author(block.Header())
@@ -386,11 +386,11 @@ func (s *Frogeum) isLocalBlock(block *types.Block) bool {
 		log.Warn("Failed to retrieve block author", "number", block.NumberU64(), "hash", block.Hash(), "err", err)
 		return false
 	}
-	// Check whether the given address is popcatbase.
+	// Check whether the given address is frogbase.
 	s.lock.RLock()
-	popcatbase := s.popcatbase
+	frogbase := s.frogbase
 	s.lock.RUnlock()
-	if author == popcatbase {
+	if author == frogbase {
 		return true
 	}
 	// Check whether the given address is specified by `txpool.local`
@@ -429,13 +429,13 @@ func (s *Frogeum) shouldPreserve(block *types.Block) bool {
 	return s.isLocalBlock(block)
 }
 
-// SetPopcatbase sets the mining reward address.
-func (s *Frogeum) SetPopcatbase(popcatbase common.Address) {
+// SetFrogbase sets the mining reward address.
+func (s *Frogeum) SetFrogbase(frogbase common.Address) {
 	s.lock.Lock()
-	s.popcatbase = popcatbase
+	s.frogbase = frogbase
 	s.lock.Unlock()
 
-	s.miner.SetPopcatbase(popcatbase)
+	s.miner.SetFrogbase(frogbase)
 }
 
 // StartMining starts the miner with the given number of CPU threads. If mining
@@ -462,15 +462,15 @@ func (s *Frogeum) StartMining(threads int) error {
 		s.txPool.SetGasPrice(price)
 
 		// Configure the local mining address
-		eb, err := s.Popcatbase()
+		eb, err := s.Frogbase()
 		if err != nil {
-			log.Error("Cannot start mining without popcatbase", "err", err)
-			return fmt.Errorf("popcatbase missing: %v", err)
+			log.Error("Cannot start mining without frogbase", "err", err)
+			return fmt.Errorf("frogbase missing: %v", err)
 		}
 		if clique, ok := s.engine.(*clique.Clique); ok {
 			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
 			if wallet == nil || err != nil {
-				log.Error("Popcatbase account unavailable locally", "err", err)
+				log.Error("Frogbase account unavailable locally", "err", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
 			clique.Authorize(eb, wallet.SignData)

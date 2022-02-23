@@ -42,7 +42,7 @@ ADD genesis.json /genesis.json
 RUN \
   echo 'gfro --cache 512 init /genesis.json' > gfro.sh && \{{if .Unlock}}
 	echo 'mkdir -p /root/.frogeum/keystore/ && cp /signer.json /root/.frogeum/keystore/' >> gfro.sh && \{{end}}
-	echo $'exec gfro --networkid {{.NetworkID}} --cache 512 --port {{.Port}} --nat extip:{{.IP}} --maxpeers {{.Peers}} {{.LightFlag}} --ethstats \'{{.Ethstats}}\' {{if .Bootnodes}}--bootnodes {{.Bootnodes}}{{end}} {{if .Popcatbase}}--miner.popcatbase {{.Popcatbase}} --mine --miner.threads 1{{end}} {{if .Unlock}}--unlock 0 --password /signer.pass --mine{{end}} --miner.gastarget {{.GasTarget}} --miner.gaslimit {{.GasLimit}} --miner.gasprice {{.GasPrice}}' >> gfro.sh
+	echo $'exec gfro --networkid {{.NetworkID}} --cache 512 --port {{.Port}} --nat extip:{{.IP}} --maxpeers {{.Peers}} {{.LightFlag}} --ethstats \'{{.Ethstats}}\' {{if .Bootnodes}}--bootnodes {{.Bootnodes}}{{end}} {{if .Frogbase}}--miner.frogbase {{.Frogbase}} --mine --miner.threads 1{{end}} {{if .Unlock}}--unlock 0 --password /signer.pass --mine{{end}} --miner.gastarget {{.GasTarget}} --miner.gaslimit {{.GasLimit}} --miner.gasprice {{.GasPrice}}' >> gfro.sh
 
 ENTRYPOINT ["/bin/sh", "gfro.sh"]
 `
@@ -67,7 +67,7 @@ services:
       - TOTAL_PEERS={{.TotalPeers}}
       - LIGHT_PEERS={{.LightPeers}}
       - STATS_NAME={{.Ethstats}}
-      - MINER_NAME={{.Popcatbase}}
+      - MINER_NAME={{.Frogbase}}
       - GAS_TARGET={{.GasTarget}}
       - GAS_LIMIT={{.GasLimit}}
       - GAS_PRICE={{.GasPrice}}
@@ -84,7 +84,7 @@ services:
 // already exists there, it will be overwritten!
 func deployNode(client *sshClient, network string, bootnodes []string, config *nodeInfos, nocache bool) ([]byte, error) {
 	kind := "sealnode"
-	if config.keyJSON == "" && config.popcatbase == "" {
+	if config.keyJSON == "" && config.frogbase == "" {
 		kind = "bootnode"
 		bootnodes = make([]string, 0)
 	}
@@ -98,18 +98,18 @@ func deployNode(client *sshClient, network string, bootnodes []string, config *n
 	}
 	dockerfile := new(bytes.Buffer)
 	template.Must(template.New("").Parse(nodeDockerfile)).Execute(dockerfile, map[string]interface{}{
-		"NetworkID":  config.network,
-		"Port":       config.port,
-		"IP":         client.address,
-		"Peers":      config.peersTotal,
-		"LightFlag":  lightFlag,
-		"Bootnodes":  strings.Join(bootnodes, ","),
-		"Ethstats":   config.ethstats,
-		"Popcatbase": config.popcatbase,
-		"GasTarget":  uint64(1000000 * config.gasTarget),
-		"GasLimit":   uint64(1000000 * config.gasLimit),
-		"GasPrice":   uint64(1000000000 * config.gasPrice),
-		"Unlock":     config.keyJSON != "",
+		"NetworkID": config.network,
+		"Port":      config.port,
+		"IP":        client.address,
+		"Peers":     config.peersTotal,
+		"LightFlag": lightFlag,
+		"Bootnodes": strings.Join(bootnodes, ","),
+		"Ethstats":  config.ethstats,
+		"Frogbase":  config.frogbase,
+		"GasTarget": uint64(1000000 * config.gasTarget),
+		"GasLimit":  uint64(1000000 * config.gasLimit),
+		"GasPrice":  uint64(1000000000 * config.gasPrice),
+		"Unlock":    config.keyJSON != "",
 	})
 	files[filepath.Join(workdir, "Dockerfile")] = dockerfile.Bytes()
 
@@ -124,7 +124,7 @@ func deployNode(client *sshClient, network string, bootnodes []string, config *n
 		"Light":      config.peersLight > 0,
 		"LightPeers": config.peersLight,
 		"Ethstats":   config.ethstats[:strings.Index(config.ethstats, ":")],
-		"Popcatbase": config.popcatbase,
+		"Frogbase":   config.frogbase,
 		"GasTarget":  config.gasTarget,
 		"GasLimit":   config.gasLimit,
 		"GasPrice":   config.gasPrice,
@@ -161,7 +161,7 @@ type nodeInfos struct {
 	enode      string
 	peersTotal int
 	peersLight int
-	popcatbase string
+	frogbase   string
 	keyJSON    string
 	keyPass    string
 	gasTarget  float64
@@ -185,10 +185,10 @@ func (info *nodeInfos) Report() map[string]string {
 		report["Gas floor (baseline target)"] = fmt.Sprintf("%0.3f MGas", info.gasTarget)
 		report["Gas ceil  (target maximum)"] = fmt.Sprintf("%0.3f MGas", info.gasLimit)
 
-		if info.popcatbase != "" {
+		if info.frogbase != "" {
 			// Ethash proof-of-work miner
 			report["Ethash directory"] = info.ethashdir
-			report["Miner account"] = info.popcatbase
+			report["Miner account"] = info.frogbase
 		}
 		if info.keyJSON != "" {
 			// Clique proof-of-authority signer
@@ -260,7 +260,7 @@ func checkNode(client *sshClient, network string, boot bool) (*nodeInfos, error)
 		peersTotal: totalPeers,
 		peersLight: lightPeers,
 		ethstats:   infos.envvars["STATS_NAME"],
-		popcatbase: infos.envvars["MINER_NAME"],
+		frogbase:   infos.envvars["MINER_NAME"],
 		keyJSON:    keyJSON,
 		keyPass:    keyPass,
 		gasTarget:  gasTarget,

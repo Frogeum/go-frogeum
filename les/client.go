@@ -262,12 +262,12 @@ func (s *LightFrogeum) prenegQuery(n *enode.Node) int {
 
 type LightDummyAPI struct{}
 
-// Popcatbase is the address that mining rewards will be send to
-func (s *LightDummyAPI) Popcatbase() (common.Address, error) {
+// Frogbase is the address that mining rewards will be send to
+func (s *LightDummyAPI) Frogbase() (common.Address, error) {
 	return common.Address{}, fmt.Errorf("mining is not supported in light mode")
 }
 
-// Coinbase is the address that mining rewards will be send to (alias for Popcatbase)
+// Coinbase is the address that mining rewards will be send to (alias for Frogbase)
 func (s *LightDummyAPI) Coinbase() (common.Address, error) {
 	return common.Address{}, fmt.Errorf("mining is not supported in light mode")
 }

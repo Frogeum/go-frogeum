@@ -31,7 +31,7 @@ import (
 // AppHelpFlagGroups is the application flags, grouped by functionality.
 var AppHelpFlagGroups = []flags.FlagGroup{
 	{
-		Name: "POPCATEUM",
+		Name: "FROGEUM",
 		Flags: []cli.Flag{
 			configFileFlag,
 			utils.DataDirFlag,
@@ -184,7 +184,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.MinerGasPriceFlag,
 			utils.MinerGasTargetFlag,
 			utils.MinerGasLimitFlag,
-			utils.MinerPopcatbaseFlag,
+			utils.MinerFrogbaseFlag,
 			utils.MinerExtraDataFlag,
 			utils.MinerRecommitIntervalFlag,
 			utils.MinerNoVerfiyFlag,

@@ -1,8 +1,8 @@
 # Faucet
 
-The `faucet` is a simplistic web application with the goal of distributing small amounts of Popcat in private and test networks.
+The `faucet` is a simplistic web application with the goal of distributing small amounts of Frog in private and test networks.
 
-Users need to post their Frogeum addresses to fund in a Twitter status update or public Facebook post and share the link to the faucet. The faucet will in turn deduplicate user requests and send the Popcat. After a funding round, the faucet prevents the same user requesting again for a pre-configured amount of time, proportional to the amount of Popcat requested.
+Users need to post their Frogeum addresses to fund in a Twitter status update or public Facebook post and share the link to the faucet. The faucet will in turn deduplicate user requests and send the Frog. After a funding round, the faucet prevents the same user requesting again for a pre-configured amount of time, proportional to the amount of Frog requested.
 
 ## Operation
 
@@ -23,9 +23,9 @@ To be able to distribute funds, the `faucet` needs access to an already funded F
 - `--account.json` is a path to the Frogeum account's JSON key file
 - `--account.pass` is a path to a text file with the decryption passphrase
 
-The faucet is able to distribute various amounts of Popcat in exchange for various timeouts. These can be configured via:
+The faucet is able to distribute various amounts of Frog in exchange for various timeouts. These can be configured via:
 
-- `--faucet.amount` is the number of Popcats to send by default
+- `--faucet.amount` is the number of Frogs to send by default
 - `--faucet.minutes` is the time to wait before allowing a rerequest
 - `--faucet.tiers` is the funding tiers to support  (x3 time, x2.5 funds)
 

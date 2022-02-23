@@ -29,7 +29,7 @@ GLOBAL OPTIONS:
    --loglevel value        log level to emit to the screen (default: 4)
    --keystore value        Directory for the keystore (default: "$HOME/.frogeum/keystore")
    --configdir value       Directory for Clef configuration (default: "$HOME/.clef")
-   --chainid value         Chain id to use for signing (1=mainnet, 3=Longcat, 4=Rinkeby, 5=Goerli) (default: 1)
+   --chainid value         Chain id to use for signing (1=mainnet, 3=Longcat, 4=Rinkeby, 5=Goerli) (default: 1213)
    --lightkdf              Reduce key-derivation RAM & CPU usage at some expense of KDF strength
    --nousb                 Disables monitoring for and managing USB hardware wallets
    --pcscdpath value       Path to the smartcard daemon (pcscd) socket file (default: "/run/pcscd/pcscd.comm")
@@ -434,9 +434,9 @@ Response
       },
       "primaryType": "Mail",
       "domain": {
-        "name": "Popcat Mail",
+        "name": "Frog Mail",
         "version": "1",
-        "chainId": 1,
+        "chainId": 1213,
         "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
       },
       "message": {

@@ -614,8 +614,8 @@ web3._extend({
 			call: 'miner_stop'
 		}),
 		new web3._extend.Method({
-			name: 'setPopcatbase',
-			call: 'miner_setPopcatbase',
+			name: 'setFrogbase',
+			call: 'miner_setFrogbase',
 			params: 1,
 			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
 		}),

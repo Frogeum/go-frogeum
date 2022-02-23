@@ -182,9 +182,9 @@ func TestTraceCall(t *testing.T) {
 	// Initialize test accounts
 	accounts := newAccounts(3)
 	genesis := &core.Genesis{Alloc: core.GenesisAlloc{
-		accounts[0].addr: {Balance: big.NewInt(params.Popcat)},
-		accounts[1].addr: {Balance: big.NewInt(params.Popcat)},
-		accounts[2].addr: {Balance: big.NewInt(params.Popcat)},
+		accounts[0].addr: {Balance: big.NewInt(params.Frog)},
+		accounts[1].addr: {Balance: big.NewInt(params.Frog)},
+		accounts[2].addr: {Balance: big.NewInt(params.Frog)},
 	}}
 	genBlocks := 10
 	signer := types.HomesteadSigner{}
@@ -312,9 +312,9 @@ func TestOverridenTraceCall(t *testing.T) {
 	// Initialize test accounts
 	accounts := newAccounts(3)
 	genesis := &core.Genesis{Alloc: core.GenesisAlloc{
-		accounts[0].addr: {Balance: big.NewInt(params.Popcat)},
-		accounts[1].addr: {Balance: big.NewInt(params.Popcat)},
-		accounts[2].addr: {Balance: big.NewInt(params.Popcat)},
+		accounts[0].addr: {Balance: big.NewInt(params.Frog)},
+		accounts[1].addr: {Balance: big.NewInt(params.Frog)},
+		accounts[2].addr: {Balance: big.NewInt(params.Frog)},
 	}}
 	genBlocks := 10
 	signer := types.HomesteadSigner{}
@@ -345,7 +345,7 @@ func TestOverridenTraceCall(t *testing.T) {
 			config: &TraceCallConfig{
 				Tracer: &tracer,
 				StateOverrides: &ethapi.StateOverride{
-					randomAccounts[0].addr: ethapi.OverrideAccount{Balance: newRPCBalance(new(big.Int).Mul(big.NewInt(1), big.NewInt(params.Popcat)))},
+					randomAccounts[0].addr: ethapi.OverrideAccount{Balance: newRPCBalance(new(big.Int).Mul(big.NewInt(1), big.NewInt(params.Frog)))},
 				},
 			},
 			expectErr: nil,
@@ -453,8 +453,8 @@ func TestTraceTransaction(t *testing.T) {
 	// Initialize test accounts
 	accounts := newAccounts(2)
 	genesis := &core.Genesis{Alloc: core.GenesisAlloc{
-		accounts[0].addr: {Balance: big.NewInt(params.Popcat)},
-		accounts[1].addr: {Balance: big.NewInt(params.Popcat)},
+		accounts[0].addr: {Balance: big.NewInt(params.Frog)},
+		accounts[1].addr: {Balance: big.NewInt(params.Frog)},
 	}}
 	target := common.Hash{}
 	signer := types.HomesteadSigner{}
@@ -486,9 +486,9 @@ func TestTraceBlock(t *testing.T) {
 	// Initialize test accounts
 	accounts := newAccounts(3)
 	genesis := &core.Genesis{Alloc: core.GenesisAlloc{
-		accounts[0].addr: {Balance: big.NewInt(params.Popcat)},
-		accounts[1].addr: {Balance: big.NewInt(params.Popcat)},
-		accounts[2].addr: {Balance: big.NewInt(params.Popcat)},
+		accounts[0].addr: {Balance: big.NewInt(params.Frog)},
+		accounts[1].addr: {Balance: big.NewInt(params.Frog)},
+		accounts[2].addr: {Balance: big.NewInt(params.Frog)},
 	}}
 	genBlocks := 10
 	signer := types.HomesteadSigner{}

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with go-frogeum. If not, see <http://www.gnu.org/licenses/>.
 
-// faucet is an Popcat faucet backed by a light client.
+// faucet is an Frog faucet backed by a light client.
 package main
 
 //go:generate go-bindata -nometadata -o website.go faucet.html
@@ -70,7 +70,7 @@ var (
 	statsFlag   = flag.String("ethstats", "", "Ethstats network monitoring auth string")
 
 	netnameFlag = flag.String("faucet.name", "", "Network name to assign to the faucet")
-	payoutFlag  = flag.Int("faucet.amount", 1, "Number of Popcats to pay out per user request")
+	payoutFlag  = flag.Int("faucet.amount", 1, "Number of Frogs to pay out per user request")
 	minutesFlag = flag.Int("faucet.minutes", 1440, "Number of minutes to wait between funding rounds")
 	tiersFlag   = flag.Int("faucet.tiers", 3, "Number of funding tiers to enable (x3 time, x2.5 funds)")
 
@@ -91,7 +91,7 @@ var (
 )
 
 var (
-	popcat = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	frog = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 )
 
 var (
@@ -110,7 +110,7 @@ func main() {
 	for i := 0; i < *tiersFlag; i++ {
 		// Calculate the amount for the next tier and format it
 		amount := float64(*payoutFlag) * math.Pow(2.5, float64(i))
-		amounts[i] = fmt.Sprintf("%s Popcats", strconv.FormatFloat(amount, 'f', -1, 64))
+		amounts[i] = fmt.Sprintf("%s Frogs", strconv.FormatFloat(amount, 'f', -1, 64))
 		if amount == 1 {
 			amounts[i] = strings.TrimSuffix(amounts[i], "s")
 		}
@@ -315,7 +315,7 @@ func (f *faucet) webHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(f.index)
 }
 
-// apiHandler handles requests for Popcat grants and transaction statuses.
+// apiHandler handles requests for Frog grants and transaction statuses.
 func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{}
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -374,7 +374,7 @@ func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 	reqs := f.reqs
 	f.lock.RUnlock()
 	if err = send(wsconn, map[string]interface{}{
-		"funds":    new(big.Int).Div(balance, popcat),
+		"funds":    new(big.Int).Div(balance, frog),
 		"funded":   nonce,
 		"peers":    f.stack.Server().PeerCount(),
 		"requests": reqs,
@@ -488,7 +488,7 @@ func (f *faucet) apiHandler(w http.ResponseWriter, r *http.Request) {
 		)
 		if timeout = f.timeouts[id]; time.Now().After(timeout) {
 			// User wasn't funded recently, create the funding transaction
-			amount := new(big.Int).Mul(big.NewInt(int64(*payoutFlag)), popcat)
+			amount := new(big.Int).Mul(big.NewInt(int64(*payoutFlag)), frog)
 			amount = new(big.Int).Mul(amount, new(big.Int).Exp(big.NewInt(5), big.NewInt(int64(msg.Tier)), nil))
 			amount = new(big.Int).Div(amount, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(msg.Tier)), nil))
 
@@ -615,7 +615,7 @@ func (f *faucet) loop() {
 			f.lock.RLock()
 			log.Info("Updated faucet state", "number", head.Number, "hash", head.Hash(), "age", common.PrettyAge(timestamp), "balance", f.balance, "nonce", f.nonce, "price", f.price)
 
-			balance := new(big.Int).Div(f.balance, popcat)
+			balance := new(big.Int).Div(f.balance, frog)
 			peers := f.stack.Server().PeerCount()
 
 			for _, conn := range f.conns {

@@ -236,8 +236,8 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 	return worker
 }
 
-// setPopcatbase sets the popcatbase used to initialize the block coinbase field.
-func (w *worker) setPopcatbase(addr common.Address) {
+// setFrogbase sets the frogbase used to initialize the block coinbase field.
+func (w *worker) setFrogbase(addr common.Address) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.coinbase = addr
@@ -887,7 +887,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
 		if w.coinbase == (common.Address{}) {
-			log.Error("Refusing to mine without popcatbase")
+			log.Error("Refusing to mine without frogbase")
 			return
 		}
 		header.Coinbase = w.coinbase
@@ -1043,5 +1043,5 @@ func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 	for i, tx := range block.Transactions() {
 		feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
 	}
-	return new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Popcat)))
+	return new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Frog)))
 }

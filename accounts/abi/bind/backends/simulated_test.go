@@ -413,7 +413,7 @@ func TestSimulatedBackend_EstimateGas(t *testing.T) {
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 	opts, _ := bind.NewKeyedTransactorWithChainID(key, big.NewInt(1337))
 
-	sim := NewSimulatedBackend(core.GenesisAlloc{addr: {Balance: big.NewInt(params.Popcat)}}, 10000000)
+	sim := NewSimulatedBackend(core.GenesisAlloc{addr: {Balance: big.NewInt(params.Frog)}}, 10000000)
 	defer sim.Close()
 
 	parsed, _ := abi.JSON(strings.NewReader(contractAbi))
@@ -518,7 +518,7 @@ func TestSimulatedBackend_EstimateGasWithPrice(t *testing.T) {
 	key, _ := crypto.GenerateKey()
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 
-	sim := NewSimulatedBackend(core.GenesisAlloc{addr: {Balance: big.NewInt(params.Popcat*2 + 2e17)}}, 10000000)
+	sim := NewSimulatedBackend(core.GenesisAlloc{addr: {Balance: big.NewInt(params.Frog*2 + 2e17)}}, 10000000)
 	defer sim.Close()
 
 	recipient := common.HexToAddress("deadbeef")
@@ -550,8 +550,8 @@ func TestSimulatedBackend_EstimateGasWithPrice(t *testing.T) {
 			From:     addr,
 			To:       &recipient,
 			Gas:      0,
-			GasPrice: big.NewInt(1e14), // gascost = 2.1popcat
-			Value:    big.NewInt(1e17), // the remaining balance for fee is 2.1popcat
+			GasPrice: big.NewInt(1e14), // gascost = 2.1frog
+			Value:    big.NewInt(1e17), // the remaining balance for fee is 2.1frog
 			Data:     nil,
 		}, 21000, nil},
 
@@ -559,10 +559,10 @@ func TestSimulatedBackend_EstimateGasWithPrice(t *testing.T) {
 			From:     addr,
 			To:       &recipient,
 			Gas:      0,
-			GasPrice: big.NewInt(2e14), // gascost = 4.2popcat
+			GasPrice: big.NewInt(2e14), // gascost = 4.2frog
 			Value:    big.NewInt(1000),
 			Data:     nil,
-		}, 21000, errors.New("gas required exceeds allowance (10999)")}, // 10999=(2.2popcat-1000wei)/(2e14)
+		}, 21000, errors.New("gas required exceeds allowance (10999)")}, // 10999=(2.2frog-1000wei)/(2e14)
 	}
 	for _, c := range cases {
 		got, err := sim.EstimateGas(context.Background(), c.message)

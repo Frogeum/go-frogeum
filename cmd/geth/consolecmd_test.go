@@ -53,7 +53,7 @@ func TestConsoleWelcome(t *testing.T) {
 	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
 
 	// Start a gfro console, make sure it's cleaned up and terminate the console
-	gfro := runMinimalGfro(t, "--miner.popcatbase", coinbase, "console")
+	gfro := runMinimalGfro(t, "--miner.frogbase", coinbase, "console")
 
 	// Gather all the infos the welcome message needs to contain
 	gfro.SetTemplateFunc("goos", func() string { return runtime.GOOS })
@@ -70,7 +70,7 @@ func TestConsoleWelcome(t *testing.T) {
 Welcome to the Gfro JavaScript console!
 
 instance: Gfro/v{{gfrover}}/{{goos}}-{{goarch}}/{{gover}}
-coinbase: {{.Popcatbase}}
+coinbase: {{.Frogbase}}
 at block: 0 ({{niltime}})
  datadir: {{.Datadir}}
  modules: {{apis}}
@@ -100,7 +100,7 @@ func TestAttachWelcome(t *testing.T) {
 	p := trulyRandInt(1024, 65533) // Yeah, sometimes this will fail, sorry :P
 	httpPort = strconv.Itoa(p)
 	wsPort = strconv.Itoa(p + 1)
-	gfro := runMinimalGfro(t, "--miner.popcatbase", "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182",
+	gfro := runMinimalGfro(t, "--miner.frogbase", "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182",
 		"--ipcpath", ipc,
 		"--http", "--http.port", httpPort,
 		"--ws", "--ws.port", wsPort)
@@ -131,7 +131,7 @@ func testAttachWelcome(t *testing.T, gfro *testgfro, endpoint, apis string) {
 	attach.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	attach.SetTemplateFunc("gover", runtime.Version)
 	attach.SetTemplateFunc("gfrover", func() string { return params.VersionWithCommit("", "") })
-	attach.SetTemplateFunc("popcatbase", func() string { return gfro.Popcatbase })
+	attach.SetTemplateFunc("frogbase", func() string { return gfro.Frogbase })
 	attach.SetTemplateFunc("niltime", func() string {
 		return time.Unix(0, 0).Format("Mon Jan 02 2006 15:04:05 GMT-0700 (MST)")
 	})
@@ -144,7 +144,7 @@ func testAttachWelcome(t *testing.T, gfro *testgfro, endpoint, apis string) {
 Welcome to the Gfro JavaScript console!
 
 instance: Gfro/v{{gfrover}}/{{goos}}-{{goarch}}/{{gover}}
-coinbase: {{popcatbase}}
+coinbase: {{frogbase}}
 at block: 0 ({{niltime}}){{if ipc}}
  datadir: {{datadir}}{{end}}
  modules: {{apis}}

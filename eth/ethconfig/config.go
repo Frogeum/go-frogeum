@@ -65,7 +65,7 @@ var Defaults = Config{
 		DatasetsOnDisk:   2,
 		DatasetsLockMmap: false,
 	},
-	NetworkId:               1,
+	NetworkId:               1213,
 	TxLookupLimit:           2350000,
 	LightPeers:              100,
 	UltraLightFraction:      75,
@@ -85,7 +85,7 @@ var Defaults = Config{
 	TxPool:      core.DefaultTxPoolConfig,
 	RPCGasCap:   25000000,
 	GPO:         FullNodeGPO,
-	RPCTxFeeCap: 1, // 1 popcat
+	RPCTxFeeCap: 1, // 1 frog
 }
 
 func init() {
@@ -190,7 +190,7 @@ type Config struct {
 	RPCGasCap uint64
 
 	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
-	// send-transction variants. The unit is popcat.
+	// send-transction variants. The unit is frog.
 	RPCTxFeeCap float64
 
 	// Checkpoint is a hardcoded checkpoint which can be nil.

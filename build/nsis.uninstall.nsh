@@ -22,7 +22,7 @@ Section "Uninstall"
   SimpleFC::AdvRemoveRule "Gfro UDP discovery (UDP:60606)"
 
   # Remove IPC endpoint (https://github.com/frogeum/EIPs/issues/147)
-  ${un.EnvVarUpdate} $0 "POPCATEUM_SOCKET" "R" "HKLM" "\\.\pipe\gfro.ipc"
+  ${un.EnvVarUpdate} $0 "FROGEUM_SOCKET" "R" "HKLM" "\\.\pipe\gfro.ipc"
 
   # Remove install directory from PATH
   Push "$INSTDIR"

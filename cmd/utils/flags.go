@@ -449,8 +449,8 @@ var (
 		Usage: "Minimum gas price for mining a transaction",
 		Value: ethconfig.Defaults.Miner.GasPrice,
 	}
-	MinerPopcatbaseFlag = cli.StringFlag{
-		Name:  "miner.popcatbase",
+	MinerFrogbaseFlag = cli.StringFlag{
+		Name:  "miner.frogbase",
 		Usage: "Public address for block mining rewards (default = first account)",
 		Value: "0",
 	}
@@ -498,7 +498,7 @@ var (
 	}
 	RPCGlobalTxFeeCapFlag = cli.Float64Flag{
 		Name:  "rpc.txfeecap",
-		Usage: "Sets a cap on transaction fee (in popcat) that can be sent via the RPC APIs (0 = no cap)",
+		Usage: "Sets a cap on transaction fee (in frog) that can be sent via the RPC APIs (0 = no cap)",
 		Value: ethconfig.Defaults.RPCTxFeeCap,
 	}
 	// Logging and debug settings
@@ -1088,24 +1088,24 @@ func MakeAddress(ks *keystore.KeyStore, account string) (accounts.Account, error
 	return accs[index], nil
 }
 
-// setPopcatbase retrieves the popcatbase either from the directly specified
+// setFrogbase retrieves the frogbase either from the directly specified
 // command line flags or from the keystore if CLI indexed.
-func setPopcatbase(ctx *cli.Context, ks *keystore.KeyStore, cfg *ethconfig.Config) {
-	// Extract the current popcatbase
-	var popcatbase string
-	if ctx.GlobalIsSet(MinerPopcatbaseFlag.Name) {
-		popcatbase = ctx.GlobalString(MinerPopcatbaseFlag.Name)
+func setFrogbase(ctx *cli.Context, ks *keystore.KeyStore, cfg *ethconfig.Config) {
+	// Extract the current frogbase
+	var frogbase string
+	if ctx.GlobalIsSet(MinerFrogbaseFlag.Name) {
+		frogbase = ctx.GlobalString(MinerFrogbaseFlag.Name)
 	}
-	// Convert the popcatbase into an address and configure it
-	if popcatbase != "" {
+	// Convert the frogbase into an address and configure it
+	if frogbase != "" {
 		if ks != nil {
-			account, err := MakeAddress(ks, popcatbase)
+			account, err := MakeAddress(ks, frogbase)
 			if err != nil {
-				Fatalf("Invalid miner popcatbase: %v", err)
+				Fatalf("Invalid miner frogbase: %v", err)
 			}
-			cfg.Miner.Popcatbase = account.Address
+			cfg.Miner.Frogbase = account.Address
 		} else {
-			Fatalf("No popcatbase configured")
+			Fatalf("No frogbase configured")
 		}
 	}
 }
@@ -1474,7 +1474,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	if keystores := stack.AccountManager().Backends(keystore.KeyStoreType); len(keystores) > 0 {
 		ks = keystores[0].(*keystore.KeyStore)
 	}
-	setPopcatbase(ctx, ks, cfg)
+	setFrogbase(ctx, ks, cfg)
 	setGPO(ctx, &cfg.GPO, ctx.GlobalString(SyncModeFlag.Name) == "light")
 	setTxPool(ctx, &cfg.TxPool)
 	setEthash(ctx, cfg)
@@ -1598,13 +1598,13 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	switch {
 	case ctx.GlobalBool(MainnetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 1
+			cfg.NetworkId = 1213
 		}
 		cfg.Genesis = core.DefaultGenesisBlock()
 		SetDNSDiscoveryDefaults(cfg, params.MainnetGenesisHash)
 	case ctx.GlobalBool(LongcatFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
-			cfg.NetworkId = 3
+			cfg.NetworkId = 777
 		}
 		cfg.Genesis = core.DefaultLongcatGenesisBlock()
 		SetDNSDiscoveryDefaults(cfg, params.LongcatGenesisHash)
@@ -1641,9 +1641,9 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 			// when we're definitely concerned with only one account.
 			passphrase = list[0]
 		}
-		// setPopcatbase has been called above, configuring the miner address from command line flags.
-		if cfg.Miner.Popcatbase != (common.Address{}) {
-			developer = accounts.Account{Address: cfg.Miner.Popcatbase}
+		// setFrogbase has been called above, configuring the miner address from command line flags.
+		if cfg.Miner.Frogbase != (common.Address{}) {
+			developer = accounts.Account{Address: cfg.Miner.Frogbase}
 		} else if accs := ks.Accounts(); len(accs) > 0 {
 			developer = ks.Accounts()[0]
 		} else {

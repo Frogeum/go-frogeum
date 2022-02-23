@@ -2094,10 +2094,10 @@ func checkTxFee(gasPrice *big.Int, gas uint64, cap float64) error {
 	if cap == 0 {
 		return nil
 	}
-	feeEth := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gas))), new(big.Float).SetInt(big.NewInt(params.Popcat)))
+	feeEth := new(big.Float).Quo(new(big.Float).SetInt(new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gas))), new(big.Float).SetInt(big.NewInt(params.Frog)))
 	feeFloat, _ := feeEth.Float64()
 	if feeFloat > cap {
-		return fmt.Errorf("tx fee (%.2f popcat) exceeds the configured cap (%.2f popcat)", feeFloat, cap)
+		return fmt.Errorf("tx fee (%.2f frog) exceeds the configured cap (%.2f frog)", feeFloat, cap)
 	}
 	return nil
 }

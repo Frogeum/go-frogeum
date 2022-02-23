@@ -41,8 +41,8 @@ type testgfro struct {
 	*cmdtest.TestCmd
 
 	// template variables for expect
-	Datadir    string
-	Popcatbase string
+	Datadir  string
+	Frogbase string
 }
 
 func init() {
@@ -75,9 +75,9 @@ func runGfro(t *testing.T, args ...string) *testgfro {
 			if i < len(args)-1 {
 				tt.Datadir = args[i+1]
 			}
-		case "--miner.popcatbase":
+		case "--miner.frogbase":
 			if i < len(args)-1 {
-				tt.Popcatbase = args[i+1]
+				tt.Frogbase = args[i+1]
 			}
 		}
 	}

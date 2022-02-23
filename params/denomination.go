@@ -16,13 +16,13 @@
 
 package params
 
-// These are the multipliers for popcat denominations.
+// These are the multipliers for frog denominations.
 // Example: To get the wei value of an amount in 'gwei', use
 //
 //    new(big.Int).Mul(value, big.NewInt(params.GWei))
 //
 const (
-	Wei    = 1
-	GWei   = 1e9
-	Popcat = 1e18
+	Wei  = 1
+	GWei = 1e9
+	Frog = 1e18
 )

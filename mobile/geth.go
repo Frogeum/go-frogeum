@@ -80,7 +80,7 @@ var defaultNodeConfig = &NodeConfig{
 	BootstrapNodes:       FoundationBootnodes(),
 	MaxPeers:             25,
 	FrogeumEnabled:       true,
-	FrogeumNetworkID:     1,
+	FrogeumNetworkID:     1213,
 	FrogeumDatabaseCache: 16,
 }
 
@@ -161,21 +161,21 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 		// If we have the Longcat testnet, hard code the chain configs too
 		if config.FrogeumGenesis == LongcatGenesis() {
 			genesis.Config = params.LongcatChainConfig
-			if config.FrogeumNetworkID == 1 {
-				config.FrogeumNetworkID = 3
+			if config.FrogeumNetworkID == 1213 {
+				config.FrogeumNetworkID = 777
 			}
 		}
 		// If we have the Rinkeby testnet, hard code the chain configs too
 		if config.FrogeumGenesis == RinkebyGenesis() {
 			genesis.Config = params.RinkebyChainConfig
-			if config.FrogeumNetworkID == 1 {
+			if config.FrogeumNetworkID == 1213 {
 				config.FrogeumNetworkID = 4
 			}
 		}
 		// If we have the Goerli testnet, hard code the chain configs too
 		if config.FrogeumGenesis == GoerliGenesis() {
 			genesis.Config = params.GoerliChainConfig
-			if config.FrogeumNetworkID == 1 {
+			if config.FrogeumNetworkID == 1213 {
 				config.FrogeumNetworkID = 5
 			}
 		}

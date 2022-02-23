@@ -51,14 +51,14 @@ func NewPublicFrogeumAPI(e *Frogeum) *PublicFrogeumAPI {
 	return &PublicFrogeumAPI{e}
 }
 
-// Popcatbase is the address that mining rewards will be send to
-func (api *PublicFrogeumAPI) Popcatbase() (common.Address, error) {
-	return api.e.Popcatbase()
+// Frogbase is the address that mining rewards will be send to
+func (api *PublicFrogeumAPI) Frogbase() (common.Address, error) {
+	return api.e.Frogbase()
 }
 
-// Coinbase is the address that mining rewards will be send to (alias for Popcatbase)
+// Coinbase is the address that mining rewards will be send to (alias for Frogbase)
 func (api *PublicFrogeumAPI) Coinbase() (common.Address, error) {
-	return api.Popcatbase()
+	return api.Frogbase()
 }
 
 // Hashrate returns the POW hashrate
@@ -129,9 +129,9 @@ func (api *PrivateMinerAPI) SetGasPrice(gasPrice hexutil.Big) bool {
 	return true
 }
 
-// SetPopcatbase sets the popcatbase of the miner
-func (api *PrivateMinerAPI) SetPopcatbase(popcatbase common.Address) bool {
-	api.e.SetPopcatbase(popcatbase)
+// SetFrogbase sets the frogbase of the miner
+func (api *PrivateMinerAPI) SetFrogbase(frogbase common.Address) bool {
+	api.e.SetFrogbase(frogbase)
 	return true
 }
 

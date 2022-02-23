@@ -121,7 +121,7 @@ var (
 		utils.MinerGasTargetFlag,
 		utils.MinerGasLimitFlag,
 		utils.MinerGasPriceFlag,
-		utils.MinerPopcatbaseFlag,
+		utils.MinerFrogbaseFlag,
 		utils.MinerExtraDataFlag,
 		utils.MinerRecommitIntervalFlag,
 		utils.MinerNoVerfiyFlag,

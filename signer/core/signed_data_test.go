@@ -131,7 +131,7 @@ var jsonTypedData = `
       },
       "primaryType": "Mail",
       "domain": {
-        "name": "Popcat Mail",
+        "name": "Frog Mail",
         "version": "1",
         "chainId": "1",
         "verifyingContract": "0xCCCcccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC"
@@ -154,7 +154,7 @@ var jsonTypedData = `
 const primaryType = "Mail"
 
 var domainStandard = core.TypedDataDomain{
-	"Popcat Mail",
+	"Frog Mail",
 	"1",
 	math.NewHexOrDecimal256(1),
 	"0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",

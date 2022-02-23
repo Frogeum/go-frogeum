@@ -34,8 +34,8 @@ Section "Gfro" GPOP_IDX
   SimpleFC::AdvAddRule "Gfro UDP discovery (UDP:60606)" "" 17 2 1 2147483647 1 "$INSTDIR\gfro.exe" "" "" "Frogeum" "" 60606 "" ""
 
   # Set default IPC endpoint (https://github.com/frogeum/EIPs/issues/147)
-  ${EnvVarUpdate} $0 "POPCATEUM_SOCKET" "R" "HKLM" "\\.\pipe\gfro.ipc"
-  ${EnvVarUpdate} $0 "POPCATEUM_SOCKET" "A" "HKLM" "\\.\pipe\gfro.ipc"
+  ${EnvVarUpdate} $0 "FROGEUM_SOCKET" "R" "HKLM" "\\.\pipe\gfro.ipc"
+  ${EnvVarUpdate} $0 "FROGEUM_SOCKET" "A" "HKLM" "\\.\pipe\gfro.ipc"
 
   # Add instdir to PATH
   Push "$INSTDIR"

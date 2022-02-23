@@ -40,11 +40,11 @@ RUN \
 	echo $'exec gfro --networkid {{.NetworkID}} --port {{.NodePort}} --bootnodes {{.Bootnodes}} --ethstats \'{{.Ethstats}}\' --cache=512 --http --http.addr=0.0.0.0 --http.corsdomain "*" --http.vhosts "*"' >> wallet.sh
 
 RUN \
-	sed -i 's/PuppethNetworkID/{{.NetworkID}}/g' dist/js/popcatwallet-master.js && \
-	sed -i 's/PuppethNetwork/{{.Network}}/g'     dist/js/popcatwallet-master.js && \
-	sed -i 's/PuppethDenom/{{.Denom}}/g'         dist/js/popcatwallet-master.js && \
-	sed -i 's/PuppethHost/{{.Host}}/g'           dist/js/popcatwallet-master.js && \
-	sed -i 's/PuppethRPCPort/{{.RPCPort}}/g'     dist/js/popcatwallet-master.js
+	sed -i 's/PuppethNetworkID/{{.NetworkID}}/g' dist/js/frogwallet-master.js && \
+	sed -i 's/PuppethNetwork/{{.Network}}/g'     dist/js/frogwallet-master.js && \
+	sed -i 's/PuppethDenom/{{.Denom}}/g'         dist/js/frogwallet-master.js && \
+	sed -i 's/PuppethHost/{{.Host}}/g'           dist/js/frogwallet-master.js && \
+	sed -i 's/PuppethRPCPort/{{.RPCPort}}/g'     dist/js/frogwallet-master.js
 
 ENTRYPOINT ["/bin/sh", "wallet.sh"]
 `

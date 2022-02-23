@@ -268,7 +268,7 @@ also need to configure a miner to process transactions and create new blocks for
 
 Mining on the public Frogeum network is a complex task as it's only feasible using GPUs,
 requiring an OpenCL or CUDA enabled `frominer` instance. For information on such a
-setup, please consult the [PopcatMining subreddit](https://www.reddit.com/r/PopcatMining/)
+setup, please consult the [FrogMining subreddit](https://www.reddit.com/r/FrogMining/)
 and the [frominer](https://github.com/frogeum-mining/frominer) repository.
 
 In a private network setting, however a single CPU miner instance is more than enough for

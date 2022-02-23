@@ -191,9 +191,9 @@ func TestCloseMiner(t *testing.T) {
 	waitForMiningState(t, miner, false)
 }
 
-// TestMinerSetPopcatbase checks that popcatbase becomes set even if mining isn't
+// TestMinerSetFrogbase checks that frogbase becomes set even if mining isn't
 // possible at the moment
-func TestMinerSetPopcatbase(t *testing.T) {
+func TestMinerSetFrogbase(t *testing.T) {
 	miner, mux := createMiner(t)
 	// Start with a 'bad' mining address
 	miner.Start(common.HexToAddress("0xdead"))
@@ -232,7 +232,7 @@ func waitForMiningState(t *testing.T, m *Miner, mining bool) {
 func createMiner(t *testing.T) (*Miner, *event.TypeMux) {
 	// Create Ethash config
 	config := Config{
-		Popcatbase: common.HexToAddress("123456789"),
+		Frogbase: common.HexToAddress("123456789"),
 	}
 	// Create chainConfig
 	memdb := memorydb.New()

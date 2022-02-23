@@ -235,7 +235,7 @@ func startEthService(t *testing.T, genesis *core.Genesis, blocks []*types.Block)
 		n.Close()
 		t.Fatal("can't import test blocks:", err)
 	}
-	ethservice.SetPopcatbase(testAddr)
+	ethservice.SetFrogbase(testAddr)
 
 	return n, ethservice
 }

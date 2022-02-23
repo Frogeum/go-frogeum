@@ -42,7 +42,7 @@ type Backend interface {
 
 // Config is the configuration parameters of mining.
 type Config struct {
-	Popcatbase common.Address `toml:",omitempty"` // Public address for block mining rewards (default = first account)
+	Frogbase   common.Address `toml:",omitempty"` // Public address for block mining rewards (default = first account)
 	Notify     []string       `toml:",omitempty"` // HTTP URL list to be notified of new work packages (only useful in ethash).
 	NotifyFull bool           `toml:",omitempty"` // Notify with pending block headers instead of work packages
 	ExtraData  hexutil.Bytes  `toml:",omitempty"` // Block extra data set by the miner
@@ -116,20 +116,20 @@ func (miner *Miner) update() {
 			case downloader.FailedEvent:
 				canStart = true
 				if shouldStart {
-					miner.SetPopcatbase(miner.coinbase)
+					miner.SetFrogbase(miner.coinbase)
 					miner.worker.start()
 				}
 			case downloader.DoneEvent:
 				canStart = true
 				if shouldStart {
-					miner.SetPopcatbase(miner.coinbase)
+					miner.SetFrogbase(miner.coinbase)
 					miner.worker.start()
 				}
 				// Stop reacting to downloader events
 				events.Unsubscribe()
 			}
 		case addr := <-miner.startCh:
-			miner.SetPopcatbase(addr)
+			miner.SetFrogbase(addr)
 			if canStart {
 				miner.worker.start()
 			}
@@ -194,9 +194,9 @@ func (miner *Miner) PendingBlock() *types.Block {
 	return miner.worker.pendingBlock()
 }
 
-func (miner *Miner) SetPopcatbase(addr common.Address) {
+func (miner *Miner) SetFrogbase(addr common.Address) {
 	miner.coinbase = addr
-	miner.worker.setPopcatbase(addr)
+	miner.worker.setFrogbase(addr)
 }
 
 // EnablePreseal turns on the preseal mining feature. It's enabled by default.

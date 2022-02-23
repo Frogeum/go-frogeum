@@ -130,7 +130,7 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 		return nil, err
 	}
 
-	coinbase, err := api.eth.Popcatbase()
+	coinbase, err := api.eth.Frogbase()
 	if err != nil {
 		return nil, err
 	}
