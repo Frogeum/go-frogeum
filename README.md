@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo/frogeum.png" width="200" alt="frogeum" />
+  <img src="assets/logo/frogeum.png" width="350" alt="frogeum" />
 </p>
 
 ## Go Frogeum
