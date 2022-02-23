@@ -17,9 +17,9 @@ Section "Uninstall"
   rmDir "$SMPROGRAMS\${APPNAME}"
 
   # Firewall - remove rules if exists
-  SimpleFC::AdvRemoveRule "Gfro incoming peers (TCP:30303)"
-  SimpleFC::AdvRemoveRule "Gfro outgoing peers (TCP:30303)"
-  SimpleFC::AdvRemoveRule "Gfro UDP discovery (UDP:30303)"
+  SimpleFC::AdvRemoveRule "Gfro incoming peers (TCP:60606)"
+  SimpleFC::AdvRemoveRule "Gfro outgoing peers (TCP:60606)"
+  SimpleFC::AdvRemoveRule "Gfro UDP discovery (UDP:60606)"
 
   # Remove IPC endpoint (https://github.com/frogeum/EIPs/issues/147)
   ${un.EnvVarUpdate} $0 "POPCATEUM_SOCKET" "R" "HKLM" "\\.\pipe\gfro.ipc"
